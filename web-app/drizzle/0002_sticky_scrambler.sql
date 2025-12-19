@@ -1,0 +1,1 @@
+ALTER TABLE "Item" ADD COLUMN "quantity" integer DEFAULT 0 NOT NULL;

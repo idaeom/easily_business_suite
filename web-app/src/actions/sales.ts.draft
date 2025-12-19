@@ -1,0 +1,21 @@
+
+import { revalidatePath } from "next/cache"; // Assuming usage
+import { db } from "@/db"; // Assuming db import
+import { spQuotes } from "@/db/schema";
+import { eq } from "drizzle-orm";
+// ... existing imports
+
+// ... existing functions
+
+export async function updateQuoteDetails(quoteId: string, data: { notes?: string, discountAmount?: number, loyaltyPointsUsed?: number }) {
+    await db.update(spQuotes)
+        .set({
+            notes: data.notes,
+            discountAmount: data.discountAmount ? data.discountAmount.toString() : "0",
+            loyaltyPointsUsed: data.loyaltyPointsUsed ? data.loyaltyPointsUsed.toString() : "0"
+        })
+        .where(eq(spQuotes.id, quoteId));
+    
+    revalidatePath("/dashboard/business/sales");
+    return { success: true };
+}
