@@ -6,23 +6,26 @@ import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { createPayrollRun } from "@/app/actions";
 import { useToast } from "@/hooks/use-toast";
+import { useRouter } from "next/navigation";
 import { Label } from "@/components/ui/label";
 
 export default function CreatePayrollForm() {
     const { toast } = useToast();
     const [loading, setLoading] = useState(false);
 
+    const router = useRouter(); // Import needed
+
     async function handleSubmit(formData: FormData) {
         setLoading(true);
         try {
-            await createPayrollRun(formData);
+            const run = await createPayrollRun(formData);
             toast({
                 title: "Success",
-                description: "Payroll run created successfully.",
+                description: "Payroll run created successfully. Redirecting to review...",
             });
-            // Redirect happens via server action usually, or we can use router here.
-            // Server action revalidatePath might not redirect if we don't return redirect().
-            // But let's assume user navigates back or we add redirect in action later if needed.
+            if (run && run.id) {
+                router.push(`/dashboard/hr/payroll/${run.id}`);
+            }
         } catch (error) {
             toast({
                 title: "Error",

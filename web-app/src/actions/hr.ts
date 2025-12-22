@@ -45,6 +45,22 @@ export async function getEmployees() {
     return employees;
 }
 
+export async function getUsersForOnboarding() {
+    const user = await getAuthenticatedUser();
+    if (!user) throw new Error("Unauthorized");
+    const db = await getDb();
+
+    // Fetch Users who DO NOT have an Employee Profile
+    const usersWithoutProfile = await db.query.users.findMany({
+        where: (users, { notExists }) => notExists(
+            db.select().from(employeeProfiles).where(eq(employeeProfiles.userId, users.id))
+        ),
+        orderBy: [desc(users.createdAt)]
+    });
+
+    return usersWithoutProfile;
+}
+
 export async function getEmployeeById(id: string) { // id is userId
     const user = await getAuthenticatedUser();
     if (!user) throw new Error("Unauthorized");

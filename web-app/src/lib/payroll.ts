@@ -189,13 +189,19 @@ export class PayrollService {
 
         // 3. Create Expenses
 
-        // Expense 1: Salaries
+        // Expense 1: Salaries (Net)
+        // Linked to "Payroll Payable" (2400) because we successfully Accrued it above.
+        // Disbursement will Debit 2400, Credit Bank.
+        const payableAccId = await this.getAccountId(db, "2400");
+        const taxAccId = await this.getAccountId(db, "2220");
+
         if (totalNetSalary > 0) {
             const salaryExp = await ExpenseService.createExpense({
                 description: `Payroll: Salaries - ${run.month}/${run.year}`,
                 amount: totalNetSalary,
                 requesterId: adminUserId,
                 category: "Salaries & Wages",
+                expenseAccountId: payableAccId, // IMPORTANT: Pay from Liability
                 incurredAt: new Date(),
             });
             await this.addBeneficiaries(salaryExp.id, salaryBeneficiaries, db);
@@ -210,6 +216,7 @@ export class PayrollService {
                 amount: totalTax,
                 requesterId: adminUserId,
                 category: "Taxes",
+                expenseAccountId: taxAccId, // Pay from PAYE Payable
                 incurredAt: new Date(),
             });
             // Single Beneficiary: FIRS
@@ -232,6 +239,7 @@ export class PayrollService {
                 amount: totalPension,
                 requesterId: adminUserId,
                 category: "Pension",
+                expenseAccountId: payableAccId, // Pay from Payroll Payable (merged for now)
                 incurredAt: new Date(),
             });
             await this.addBeneficiaries(pensionExp.id, pensionBeneficiaries, db);
@@ -243,13 +251,62 @@ export class PayrollService {
         await db.update(payrollRuns)
             .set({
                 status: "APPROVED",
-                expenseMeta: expenseIds,
-                // totalAmount matches the run total (Net Pay), or Cost to Company? 
-                // Usually Payroll Run totalAmount = Net Pay sum for display, but technically CTC is higher.
                 // Keeping as Net Pay sum for consistency with UI "Total Net Pay".
-                // But expense sum is higher (Net + Tax + Pension).
             })
             .where(eq(payrollRuns.id, runId));
+
+        // 5. GL POSTING (ACCRUAL)
+        const { FinanceService } = await import("@/lib/finance");
+        const salaryAccId = await this.getAccountId(db, "6000"); // Salaries Expense
+        const payeAccId = await this.getAccountId(db, "2220"); // PAYE Payable
+        const payrollPayableId = await this.getAccountId(db, "2400"); // Net Pay Payable (Also used for Pension/Other for now)
+
+        // Ensure accounts exist (basic check)
+        if (salaryAccId && payeAccId && payrollPayableId) {
+            // A. Debit Salaries (Total Gross)
+            // Wait, Salaries Expense = Basic + Housing + Transport + Others.
+            // Employer Pension is separate Expense usually? Or included in Staff Costs?
+            // Let's bundle Employer Pension into Salaries Expense (or 6000-series sub-account) for simplicity.
+
+            const totalGross = run.items.reduce((sum, item) => sum + Number(item.grossPay), 0);
+            const totalEmployerPension = run.items.reduce((sum, item) => sum + ((item.breakdown as any).employerContribution?.pension || 0), 0);
+            const totalStaffCost = totalGross + totalEmployerPension;
+
+            const txId = crypto.randomUUID();
+            // Create GL Transaction
+            await FinanceService.createTransaction({
+                date: new Date(),
+                description: `Payroll Accrual: ${run.month}/${run.year}`,
+                metadata: { type: "PAYROLL", runId },
+                entries: [
+                    // DEBITS (Expenses) - Positive
+                    {
+                        accountId: salaryAccId,
+                        amount: totalStaffCost, // Gross + Employer Pension
+                        description: `Staff Salaries & Employer Pension`
+                    },
+                    // CREDITS (Liabilities) - Negative
+                    // 1. PAYE
+                    ...(totalTax > 0 ? [{
+                        accountId: payeAccId,
+                        amount: -totalTax,
+                        description: "PAYE Tax Payable"
+                    }] : []),
+                    // 2. Net Pay (Payroll Payable)
+                    ...(totalNetSalary > 0 ? [{
+                        accountId: payrollPayableId,
+                        amount: -totalNetSalary,
+                        description: "Net Salaries Payable"
+                    }] : []),
+                    // 3. Pension (Payroll Payable or Specific)
+                    ...(totalPension > 0 ? [{
+                        accountId: payrollPayableId, // Using 2400 for Pension too as we didn't split it in COA yet
+                        amount: -totalPension, // Employee + Employer
+                        description: "Pension Contribution Payable"
+                    }] : [])
+                ] as any
+            });
+        }
 
         return { run, expenseIds };
     }
@@ -269,5 +326,12 @@ export class PayrollService {
                 status: "PENDING"
             });
         }
+    }
+
+    // Helper to get Account ID by code
+    private static async getAccountId(db: any, code: string) {
+        const { accounts } = await import("@/db/schema");
+        const account = await db.query.accounts.findFirst({ where: eq(accounts.code, code) });
+        return account?.id;
     }
 }

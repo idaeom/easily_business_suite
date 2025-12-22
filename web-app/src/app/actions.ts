@@ -1343,9 +1343,10 @@ export async function createPayrollRun(formData: FormData) {
     const year = Number(formData.get("year"));
 
     const { PayrollService } = await import("@/lib/payroll");
-    await PayrollService.createPayrollRun(month, year, user.id);
+    const run = await PayrollService.createPayrollRun(month, year, user.id);
 
     revalidatePath("/dashboard/hr/payroll");
+    return run;
 }
 
 export async function approvePayrollRun(runId: string) {
