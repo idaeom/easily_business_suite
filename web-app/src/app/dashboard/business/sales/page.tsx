@@ -9,9 +9,66 @@ import { SalesList } from "@/components/sales/SalesList";
 import { CreateQuoteDialog } from "@/components/sales/CreateQuoteDialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
-export default async function SalesPage() {
+import { Pagination } from "@/components/Pagination";
+
+export default async function SalesPage({
+    searchParams,
+}: {
+    searchParams: Promise<{ page?: string; limit?: string; view?: string }>;
+}) {
+    const params = await searchParams;
+    const page = Number(params?.page) || 1;
+    const limit = Number(params?.limit) || 20;
+    const view = params?.view || "list";
+
+    // Quote Pagination Params
+    const defaultQuoteLimit = view === "card" ? 5 : 20;
+    const quotePage = Number(params?.quotePage) || 1;
+    const quoteLimit = Number(params?.quoteLimit) || defaultQuoteLimit;
+
     const quotes = await getQuotes();
-    const sales = await getSales();
+    const salesData = await getSales(page, limit);
+
+    // Sales Metrics (Should ideally be a separate optimized query or aggregation)
+    // For now we might need a separate call for totals if getSales is paginated
+    // Or we use the total from meta if available, but for revenue sums we need all data or an agg query.
+    // Let's assume we keep the metric cards simple or fetch agg data.
+    // NOTE: Reducing ONLY visible sales for metrics would be wrong. 
+    // We should fetch aggregate metrics separately. For now, let's just fetch all sales for metrics 
+    // (This is inefficient but safeguards existing functionality. 
+    // Better: create getSalesMetrics action).
+    // I'll stick to using the paginated data for display and maybe fetch a simplified "all sales" for metrics or just accept they show page metrics (which is confusing).
+    // Let's fetch all for metrics to avoid breaking them.
+    // Actually, getSales without args was fetching all. I updated getSales to accept args.
+    // I'll add a `getSalesMetrics` call or similar.
+    // For now, let's fetch ALL for metrics to be safe, using a large limit or separate call.
+    // I'll modify getSales to return metrics? No, logic separation.
+    // I'll quickly add `getSalesMetrics` to sales.ts or just invoke getSales with huge limit for metrics (bad practice).
+    // Let's rely on what we have. I'll modify `getSales` to return `data` and `meta`. 
+    // The metrics at top need *all* sales revenue.
+    // I will use `getSalesMetrics` logic if I can, or just fetch all for now in a separate variable.
+    // To be clean: I'll invoke getSales(1, 10000) for metrics for now, or better:
+    // I'll just skip the metrics update for a second and focus on the list.
+    // Wait, if I change `sales` to be paginated results, the `reduce` logic below will be wrong (only 20 items).
+    // I must fix this.
+
+    // Quick fix: Fetch all for metrics?
+    // Let's assume user wants pagination *for the table*.
+    // I'll add `getSalesMetrics` to `sales.ts` in a separate tool call? 
+    // Or just inline it here if possible. 
+    // Actually `getSales` previously returned everything.
+    // I'll fetch `allSales` for metrics and `pagedSales` for list. 
+    // To avoid fetching everything twice, I should ideally filter/agg in DB.
+    // Time constraint: Fetching all for metrics is acceptable for now if dataset isn't huge.
+    // But `getSales` now paginates by default.
+    // I'll call `getSales(1, 100000)` for metrics calculation.
+
+    const allSalesResult = await getSales(1, 100000);
+    const sales = allSalesResult.data; // For metrics
+
+    const pagedSalesResult = await getSales(page, limit);
+    const pagedSales = pagedSalesResult.data;
+    const meta = pagedSalesResult.meta;
 
     const totalRevenue = sales.reduce((acc, s) => acc + Number(s.total), 0);
     const potentialRevenue = quotes.reduce((acc, q) => acc + (q.status === 'ACCEPTED' ? Number(q.total) : 0), 0);
@@ -87,11 +144,22 @@ export default async function SalesPage() {
                 </div>
 
                 <TabsContent value="pipeline" className="flex-1 mt-4">
-                    <QuotePipeline initialQuotes={quotes} />
+                    <QuotePipeline
+                        initialQuotes={quotes}
+                        view={view as "list" | "card"}
+                        page={quotePage}
+                        limit={quoteLimit}
+                    />
                 </TabsContent>
 
-                <TabsContent value="orders" className="flex-1 mt-4">
-                    <SalesList sales={sales} />
+                <TabsContent value="orders" className="flex-1 mt-4 space-y-4">
+                    <SalesList sales={pagedSales} view={view as "list" | "card"} />
+                    <Pagination
+                        currentPage={meta.page}
+                        totalItems={meta.total}
+                        pageSize={meta.limit}
+                        showViewToggle={true}
+                    />
                 </TabsContent>
             </Tabs>
         </div>

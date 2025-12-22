@@ -1,6 +1,6 @@
 
 import { getDb } from "@/db";
-import { accounts, contacts, shifts, shiftCashDeposits, shiftReconciliations, posTransactions, transactionPayments, ledgerEntries, users, items, customerLedgerEntries, transactions, outlets } from "@/db/schema";
+import { accounts, contacts, posShifts, shiftCashDeposits, shiftReconciliations, posTransactions, transactionPayments, ledgerEntries, users, items, customerLedgerEntries, transactions, outlets } from "@/db/schema";
 import { eq, and, sql } from "drizzle-orm";
 import { confirmWalletDeposit } from "@/actions/customer-ledger";
 import { confirmShiftDeposit, confirmShiftReconciliation } from "@/actions/pos";
@@ -16,7 +16,7 @@ async function runTest() {
         await db.delete(transactionPayments).where(sql`"transactionId" IN ('TX-WAL-001', 'TX-SALE-001')`);
         await db.delete(posTransactions).where(sql`"id" IN ('TX-WAL-001', 'TX-SALE-001')`);
         await db.delete(shiftCashDeposits).where(eq(shiftCashDeposits.id, "DEP-SHIFT-001"));
-        await db.delete(shifts).where(eq(shifts.id, "SHIFT-TEST-001"));
+        await db.delete(posShifts).where(eq(posShifts.id, "SHIFT-TEST-001"));
 
         // Delete GL Data
         const glDescriptions = sql`"description" LIKE 'Wallet Funding%' OR "description" LIKE 'Sale Revenue%' OR "description" LIKE 'Shift Deposit Confirmed%' OR "description" LIKE 'Sale Cash%'`;
@@ -205,7 +205,7 @@ async function runTest() {
 
     const shiftId = "SHIFT-TEST-001";
     // Create Shift
-    await db.insert(shifts).values({
+    await db.insert(posShifts).values({
         id: shiftId,
         cashierId: "USER-001", // Assume exists or doesn't matter for query
         outletId: "OUTLET-001",

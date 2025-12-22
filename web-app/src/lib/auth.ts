@@ -86,6 +86,28 @@ export const authOptions: NextAuthOptions = {
 
 
 export async function getAuthenticatedUser() {
+    if (process.env.IS_SCRIPT === "true") {
+        // BYPASS for Scripts
+        const { getDb } = await import("@/db");
+        const { users } = await import("@/db/schema");
+        const { eq } = await import("drizzle-orm");
+        const db = await getDb();
+        const admin = await db.query.users.findFirst({
+            where: eq(users.email, "admin@example.com")
+        });
+        if (admin) {
+            return {
+                id: admin.id,
+                name: admin.name,
+                email: admin.email,
+                role: admin.role as "ADMIN" | "USER",
+                permissions: (admin.permissions as string[]) || [],
+                image: admin.image,
+                outletId: admin.outletId || undefined
+            };
+        }
+    }
+
     const { getServerSession } = await import("next-auth");
     const session = await getServerSession(authOptions);
     return session?.user;

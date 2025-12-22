@@ -5,7 +5,7 @@ import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 import {
     LayoutDashboard, CheckSquare, Wallet, Settings, PieChart, Users, Briefcase,
-    ShoppingCart, Package, Truck, Store, Landmark, Calculator, LogOut, CreditCard
+    ShoppingCart, Package, Truck, Store, Landmark, Calculator, LogOut, CreditCard, Banknote
 } from "lucide-react";
 
 import React from 'react';
@@ -25,12 +25,14 @@ const commerceItems = [
     { href: "/dashboard/business/operations", label: "Operations Pro", icon: Truck },
     { href: "/dashboard/business/customers", label: "Customers", icon: Users },
     { href: "/dashboard/business/pos", label: "Invoice Pro (POS)", icon: Store },
-    { href: "/dashboard/business/sales/reconciliation", label: "Wallet Deposits", icon: CreditCard },
+    { href: "/dashboard/business/revenue", label: "Revenue Pro", icon: Banknote },
 ];
 
 // 3. Finance
 const financeItems = [
     { href: "/dashboard/finance", label: "General Ledger", icon: Landmark },
+    { href: "/dashboard/finance/coa", label: "Chart of Accounts", icon: Users }, // Using Users temporarily or List
+    { href: "/dashboard/business/finance/accounts", label: "Business Accounts", icon: CreditCard },
     { href: "/dashboard/expenses", label: "Expenses", icon: Wallet },
     { href: "/dashboard/budgets", label: "Budgets", icon: Calculator },
     { href: "/dashboard/reports", label: "Financial Reports", icon: PieChart },

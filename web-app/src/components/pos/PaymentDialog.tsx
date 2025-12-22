@@ -5,7 +5,7 @@ import React, { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { getBankAccounts } from "@/actions/pos";
+import { getPosBusinessAccounts } from "@/actions/pos";
 import { useToast } from "@/hooks/use-toast";
 import { formatCurrency } from "@/lib/utils";
 import { CreditCard, Banknote, Smartphone } from "lucide-react";
@@ -13,9 +13,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Label } from "@/components/ui/label";
 
 const METHODS = [
-    { code: "CASH", name: "Cash", icon: Banknote },
-    { code: "CARD", name: "Card", icon: CreditCard },
-    { code: "TRANSFER", name: "Transfer", icon: Smartphone },
+    { code: "CASH", name: "Cash", icon: Banknote, accountTypes: ["CASH"] },
+    { code: "CARD", name: "Card", icon: CreditCard, accountTypes: ["BANK", "MOMO"] },
+    { code: "TRANSFER", name: "Transfer", icon: Smartphone, accountTypes: ["BANK"] },
 ];
 
 interface PaymentDialogProps {
@@ -47,7 +47,7 @@ export default function PaymentDialog({ open, onClose, total, items, shiftId, co
 
     useEffect(() => {
         if (open) {
-            getBankAccounts().then(setAccounts);
+            getPosBusinessAccounts().then(setAccounts);
         }
     }, [open]);
 
@@ -64,15 +64,18 @@ export default function PaymentDialog({ open, onClose, total, items, shiftId, co
             return;
         }
 
-        if ((selectedMethod === "CARD" || selectedMethod === "TRANSFER") && !selectedAccount) {
-            toast({ title: "Error", description: "Please select a Terminal / Bank Account", variant: "destructive" });
+        const currentMethod = METHODS.find(m => m.code === selectedMethod);
+        const filteredAccounts = accounts.filter(acc => currentMethod?.accountTypes.includes(acc.type));
+
+        if (filteredAccounts.length > 0 && !selectedAccount) {
+            toast({ title: "Error", description: `Please select a ${selectedMethod === 'CASH' ? 'Register' : 'Bank/Terminal'}`, variant: "destructive" });
             return;
         }
 
         setPayments([...payments, {
             method: selectedMethod,
             amount: amt,
-            accountId: (selectedMethod !== "CASH") ? selectedAccount : undefined
+            accountId: selectedAccount || undefined
         }]);
         setCurrentAmount("");
         setSelectedAccount("");
@@ -146,22 +149,31 @@ export default function PaymentDialog({ open, onClose, total, items, shiftId, co
                         ))}
                     </div>
 
-                    {/* Terminal Selection for Non-Cash */}
-                    {(selectedMethod === "CARD" || selectedMethod === "TRANSFER") && (
-                        <div className="space-y-1">
-                            <Label>Select Terminal / Bank Account</Label>
-                            <Select value={selectedAccount} onValueChange={setSelectedAccount}>
-                                <SelectTrigger>
-                                    <SelectValue placeholder="Select Account" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    {accounts.map(acc => (
-                                        <SelectItem key={acc.id} value={acc.id}>{acc.name} ({acc.bankName || 'N/A'})</SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
-                        </div>
-                    )}
+                    {/* Account Selection (Dynamic based on Method) */}
+                    {(() => {
+                        const currentMethod = METHODS.find(m => m.code === selectedMethod);
+                        const filteredAccounts = accounts.filter(acc => currentMethod?.accountTypes.includes(acc.type));
+
+                        // If accounts exist for this method, show selector (Required)
+                        if (filteredAccounts.length > 0) {
+                            return (
+                                <div className="space-y-1">
+                                    <Label>Select {selectedMethod === 'CASH' ? 'Register / Drawer' : 'Terminal / Bank'}</Label>
+                                    <Select value={selectedAccount} onValueChange={setSelectedAccount}>
+                                        <SelectTrigger>
+                                            <SelectValue placeholder="Select Account" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            {filteredAccounts.map(acc => (
+                                                <SelectItem key={acc.id} value={acc.glAccountId}>{acc.name} ({acc.type})</SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                            );
+                        }
+                        return null;
+                    })()}
 
                     <div className="flex gap-2">
                         <Input

@@ -3,6 +3,7 @@ import { getPaystackBalance } from "@/app/actions";
 import { getAppMode } from "@/actions/app-mode";
 import { TestConfig } from "@/lib/test-config";
 import { IncomeChart } from "@/components/finance/IncomeChart";
+import { Pagination } from "@/components/Pagination";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
@@ -23,6 +24,8 @@ import {
     HoverCardTrigger,
 } from "@/components/ui/hover-card";
 
+
+
 export default async function FinancePage({
     searchParams,
 }: {
@@ -30,6 +33,8 @@ export default async function FinancePage({
 }) {
     const params = await searchParams;
     const tab = typeof params.tab === "string" ? params.tab : "overview";
+    const page = Number(params.page) || 1;
+    const limit = Number(params.limit) || 50;
     const appMode = await getAppMode();
     const isTestMode = appMode === "TEST";
 
@@ -38,7 +43,7 @@ export default async function FinancePage({
     const assetAccounts = await getAccountBalancesByType("ASSET");
     const incomeAccounts = await getAccountBalancesByType("INCOME");
 
-    const { data: transactions } = await getTransactions(1, 50);
+    const { data: transactions, metadata: transactionsMeta } = await getTransactions(page, limit);
     const { totalIncome, chartData } = await getIncomeMetrics();
 
     return (
@@ -87,7 +92,7 @@ export default async function FinancePage({
                                     <CreditCard className="h-4 w-4 text-muted-foreground" />
                                 </CardHeader>
                                 <CardContent>
-                                    <div className="text-2xl font-bold">₦{pb.balance.toLocaleString()}</div>
+                                    <div className="text-2xl font-bold">₦{Number(pb.balance).toLocaleString("en-NG", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
                                     <p className="text-xs text-muted-foreground">
                                         {pb.provider} Balance (Live)
                                     </p>
@@ -103,7 +108,7 @@ export default async function FinancePage({
                                 <ArrowUpRight className="h-4 w-4 text-green-500" />
                             </CardHeader>
                             <CardContent>
-                                <div className="text-2xl font-bold">₦{totalIncome.toLocaleString()}</div>
+                                <div className="text-2xl font-bold">₦{Number(totalIncome).toLocaleString("en-NG", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
                                 <p className="text-xs text-muted-foreground">
                                     Lifetime Income
                                 </p>
@@ -174,7 +179,7 @@ export default async function FinancePage({
                                                 </TableCell>
                                                 <TableCell className="text-right">
                                                     <div className="text-2xl font-bold text-slate-900">
-                                                        ₦{acc.balance.toLocaleString()}
+                                                        ₦{Number(acc.balance).toLocaleString("en-NG", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                                                     </div>
                                                 </TableCell>
                                                 <TableCell className="text-right">
@@ -249,7 +254,7 @@ export default async function FinancePage({
                                                     <div className="text-xs text-muted-foreground">{acc.code}</div>
                                                 </TableCell>
                                                 <TableCell className="text-right">
-                                                    ₦{acc.balance.toLocaleString()}
+                                                    ₦{Number(acc.balance).toLocaleString("en-NG", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                                                 </TableCell>
                                             </TableRow>
                                         ))}
@@ -276,6 +281,14 @@ export default async function FinancePage({
                         </CardHeader>
                         <CardContent>
                             <TransactionTable transactions={transactions} />
+                            <Pagination
+                                currentPage={transactionsMeta.currentPage}
+                                totalItems={transactionsMeta.totalItems}
+                                pageSize={transactionsMeta.pageSize}
+                                viewParam="transactionsView" // Optional custom key if needed, or default
+                                pageParam="page"
+                                limitParam="limit"
+                            />
                         </CardContent>
                     </Card>
                 </TabsContent>
@@ -300,7 +313,7 @@ export default async function FinancePage({
                                         {chartData.map((item) => (
                                             <TableRow key={item.date}>
                                                 <TableCell>{item.date}</TableCell>
-                                                <TableCell className="text-right">₦{item.amount.toLocaleString()}</TableCell>
+                                                <TableCell className="text-right">₦{Number(item.amount).toLocaleString("en-NG", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
                                             </TableRow>
                                         ))}
                                         {chartData.length === 0 && (
@@ -371,7 +384,7 @@ function TransactionTable({ transactions }: { transactions: any[] }) {
                                             <span className="text-gray-600">{entry.account?.name || "Unknown Account"}</span>
                                         </div>
                                         <span className="font-mono font-medium">
-                                            ₦{Math.abs(Number(entry.amount)).toLocaleString()}
+                                            ₦{Math.abs(Number(entry.amount)).toLocaleString("en-NG", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                                         </span>
                                     </div>
                                 ))}

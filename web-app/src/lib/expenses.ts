@@ -1,6 +1,6 @@
 import { getDb } from "@/db";
 import { expenses, expenseBeneficiaries } from "@/db/schema";
-import { eq, desc } from "drizzle-orm";
+import { eq, desc, sql } from "drizzle-orm";
 import { AuditService } from "@/lib/audit";
 
 export class ExpenseService {
@@ -150,17 +150,6 @@ export class ExpenseService {
                 .returning();
 
             await AuditService.log(userId, "UPDATE_EXPENSE_STATUS", "Expense", expenseId, { description: `Updated status to ${status}` }, tx);
-
-            // Notify Requester
-            if (expense.requesterId !== userId) {
-                const { CollaborationService } = await import("@/lib/collaboration");
-                await CollaborationService.createNotification({
-                    userId: expense.requesterId,
-                    title: `Expense ${status}`,
-                    message: `Your expense "${expense.description}" status has been updated to ${status}.`
-                }, tx);
-            }
-
             return expense;
         });
     }

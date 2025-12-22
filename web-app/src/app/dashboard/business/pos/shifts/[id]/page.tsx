@@ -1,7 +1,7 @@
 
 import React from "react";
 import { getDb } from "@/db";
-import { shifts, shiftReconciliations, posTransactions, shiftCashDeposits, accounts } from "@/db/schema";
+import { posShifts, shiftReconciliations, posTransactions, shiftCashDeposits, accounts } from "@/db/schema";
 import { eq, desc } from "drizzle-orm";
 import { notFound } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -22,8 +22,8 @@ export default async function ShiftDetailsPage(props: { params: Promise<{ id: st
     const db = await getDb();
 
     // Fetch Shift with Relations
-    const shift = await db.query.shifts.findFirst({
-        where: eq(shifts.id, params.id),
+    const shift = await db.query.posShifts.findFirst({
+        where: eq(posShifts.id, params.id),
         with: {
             cashier: true,
             reconciliations: true,

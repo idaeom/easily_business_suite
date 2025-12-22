@@ -28,7 +28,7 @@ export function CustomerLedgerView({ customer }: CustomerLedgerViewProps) {
     const [amount, setAmount] = useState("");
     const [notes, setNotes] = useState("");
     // Duplicate line removed
-    const [method, setMethod] = useState<"CASH" | "TRANSFER">("CASH");
+    const [method, setMethod] = useState<"CASH" | "TRANSFER" | "CARD">("CASH");
     const [selectedAccountId, setSelectedAccountId] = useState("");
     const [open, setOpen] = useState(false);
     const { toast } = useToast();
@@ -53,7 +53,7 @@ export function CustomerLedgerView({ customer }: CustomerLedgerViewProps) {
     const handleFundWallet = async () => {
         if (!amount) return;
         try {
-            await addCustomerBalance(customer.id, parseFloat(amount), notes || "Manual Deposit", method, selectedAccountId || undefined);
+            await addCustomerBalance(customer.id, parseFloat(amount), notes || "Manual Deposit", method);
 
             if (method === "TRANSFER") {
                 toast({ title: "Request Submitted", description: "Deposit recorded. Use 'Wallet Deposits' to confirm." });
@@ -105,22 +105,11 @@ export function CustomerLedgerView({ customer }: CustomerLedgerViewProps) {
                                             onChange={(e) => setMethod(e.target.value as any)}
                                         >
                                             <option value="CASH">Cash</option>
+                                            <option value="CARD">Card / POS</option>
                                             <option value="TRANSFER">Bank Transfer</option>
                                         </select>
                                     </div>
-                                    <div className="space-y-2">
-                                        <Label>Deposit To Account</Label>
-                                        <select
-                                            className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                                            value={selectedAccountId}
-                                            onChange={(e) => setSelectedAccountId(e.target.value)}
-                                        >
-                                            <option value="">Select Account...</option>
-                                            {accounts.map(acc => (
-                                                <option key={acc.id} value={acc.id}>{acc.name} ({acc.code})</option>
-                                            ))}
-                                        </select>
-                                    </div>
+                                    {/* Account Selection Removed - Reconciliation handled involved Revenue Pro */}
                                     <div className="space-y-2">
                                         <Label>Notes / Reference</Label>
                                         <Input value={notes} onChange={e => setNotes(e.target.value)} placeholder="e.g. Bank Ref, Depositor Name" />

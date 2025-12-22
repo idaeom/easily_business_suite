@@ -1,6 +1,6 @@
 "use server";
 
-import { items, posTransactions, contacts, transactionPayments, shifts, outlets, taxRules, discounts, transactions, ledgerEntries, customerLedgerEntries, accounts, shiftReconciliations, shiftCashDeposits, inventory } from "@/db/schema";
+import { items, posTransactions, contacts, transactionPayments, posShifts, outlets, taxRules, discounts, transactions, ledgerEntries, customerLedgerEntries, accounts, shiftReconciliations, shiftCashDeposits, inventory, salesTaxes, businessAccounts } from "@/db/schema";
 import { eq, and, desc, sql, inArray, gte, lte, asc } from "drizzle-orm";
 import { getDb } from "@/db";
 import { getAuthenticatedUser } from "@/lib/auth";
@@ -8,6 +8,8 @@ import { revalidatePath } from "next/cache";
 import { logAuditAction } from "./audit";
 import { roundToTwo } from "@/lib/utils/math";
 import { confirmWalletDeposit } from "@/actions/customer-ledger";
+import { calculateTax } from "@/lib/utils/tax-utils";
+
 
 // =========================================
 // SHIFT MANAGEMENT
@@ -25,8 +27,8 @@ export async function addShiftCashDeposit(data: {
     const db = await getDb();
 
     // Verify Shift
-    const shift = await db.query.shifts.findFirst({
-        where: eq(shifts.id, data.shiftId)
+    const shift = await db.query.posShifts.findFirst({
+        where: eq(posShifts.id, data.shiftId)
     });
     if (!shift) throw new Error("Shift not found");
 
@@ -39,7 +41,9 @@ export async function addShiftCashDeposit(data: {
         depositedById: user.id
     });
 
-    revalidatePath(`/ dashboard / business / pos / shifts / ${data.shiftId} `);
+    if (process.env.IS_SCRIPT !== "true") {
+        revalidatePath(`/dashboard/business/pos/shifts/${data.shiftId}`);
+    }
     return { success: true };
 }
 
@@ -48,8 +52,8 @@ export async function getActiveShift() {
     if (!user) return null;
 
     const db = await getDb();
-    const shift = await db.query.shifts.findFirst({
-        where: and(eq(shifts.cashierId, user.id), eq(shifts.status, "OPEN"))
+    const shift = await db.query.posShifts.findFirst({
+        where: and(eq(posShifts.cashierId, user.id), eq(posShifts.status, "OPEN"))
     });
     return shift;
 }
@@ -64,7 +68,7 @@ export async function openShift(startCash: number, outletId?: string) {
     const existing = await getActiveShift();
     if (existing) throw new Error("You already have an open shift.");
 
-    const [shift] = await db.insert(shifts).values({
+    const [shift] = await db.insert(posShifts).values({
         cashierId: user.id,
         outletId: outletId, // Optional, can be inferred or passed
         startCash: startCash.toString(),
@@ -73,7 +77,9 @@ export async function openShift(startCash: number, outletId?: string) {
     }).returning();
 
     await logAuditAction(user.id, "OPEN_SHIFT", shift.id, "SHIFT", { startCash });
-    revalidatePath("/dashboard/business/pos");
+    if (process.env.IS_SCRIPT !== "true") {
+        revalidatePath("/dashboard/business/pos");
+    }
     return { success: true, shift };
 }
 
@@ -84,8 +90,8 @@ export async function getShiftSummary(shiftId: string) {
     const db = await getDb();
 
     // Fetch Shift Details
-    const shift = await db.query.shifts.findFirst({
-        where: eq(shifts.id, shiftId),
+    const shift = await db.query.posShifts.findFirst({
+        where: eq(posShifts.id, shiftId),
         with: {
             cashDeposits: true
         }
@@ -209,17 +215,21 @@ export async function closeShift(shiftId: string, actuals: Record<string, number
     }
 
     // 3. Close Shift (Pending Reconciliation)
-    // Legacy columns might be inaccurate now if multiple accounts used, but kept for simple aggregation
-    const cashTotal = expected["CASH"] || 0; // Drawer only
-    // Maybe sum all CASH_DEPOSIT? No, legacy schema expects simple string. Leave as is or approximations.
+    const cashTotal = expected["CASH"] || 0;
+    const cardTotal = expected["CARD"] || 0;
+    const transferTotal = expected["TRANSFER"] || 0;
 
-    await db.update(shifts).set({
+    await db.update(posShifts).set({
         endTime: new Date(),
         status: "CLOSED",
         // Legacy Columns (Approximate)
         expectedCash: cashTotal.toString(),
         actualCash: (actuals["CASH"] || 0).toString(),
-    }).where(eq(shifts.id, shiftId));
+        expectedCard: cardTotal.toString(),
+        actualCard: (actuals["CARD"] || 0).toString(),
+        expectedTransfer: transferTotal.toString(),
+        actualTransfer: (actuals["TRANSFER"] || 0).toString(),
+    }).where(eq(posShifts.id, shiftId));
 
     // 4. Audit Only (No GL)
     await logAuditAction(user.id, "CLOSE_SHIFT", shiftId, "SHIFT", {
@@ -227,42 +237,215 @@ export async function closeShift(shiftId: string, actuals: Record<string, number
         actuals
     });
 
-    revalidatePath("/dashboard/business/pos");
+    if (process.env.IS_SCRIPT !== "true") {
+        revalidatePath("/dashboard/business/pos");
+    }
     return { success: true };
 }
 
-export async function reconcileShift(shiftId: string) {
+export async function reconcileShift(shiftId: string, data?: {
+    verifiedCash: number;
+    verifiedCard: number;
+    verifiedTransfer?: number;
+    cashAccountId?: string;
+    cardAccountId?: string;
+    transferAccountId?: string;
+}) {
     const user = await getAuthenticatedUser();
     if (!user) throw new Error("Unauthorized");
-    // Check Role? (Finance/Manager)
 
     const db = await getDb();
-    const shift = await db.query.shifts.findFirst({
-        where: eq(shifts.id, shiftId),
-        with: { reconciliations: true }
+    const shift = await db.query.posShifts.findFirst({
+        where: eq(posShifts.id, shiftId),
     });
 
     if (!shift || shift.status !== "CLOSED") throw new Error("Shift must be CLOSED to reconcile");
 
-    // Post to GL
-    // 1. Credit Sales (Revenue)
-    // 2. Debit Cash/Bank (Assets)
-    // 3. Debit/Credit Variance (Expense/Income)
+    // 1. Resolve GL Accounts from Selected Business Accounts
+    let cashGLAccountId: string | undefined;
+    let cardGLAccountId: string | undefined;
+    let transferGLAccountId: string | undefined;
 
-    // Fetch Accounts (Mock IDs for now, ideally from Settings)
-    // const salesAccount = ...
-    // const cashAccount = ...
+    if (data?.cashAccountId) {
+        const ba = await db.query.businessAccounts.findFirst({ where: eq(businessAccounts.id, data.cashAccountId) });
+        if (ba?.glAccountId) cashGLAccountId = ba.glAccountId;
+    }
+    if (data?.cardAccountId) {
+        const ba = await db.query.businessAccounts.findFirst({ where: eq(businessAccounts.id, data.cardAccountId) });
+        if (ba?.glAccountId) cardGLAccountId = ba.glAccountId;
+    }
+    if (data?.transferAccountId) {
+        const ba = await db.query.businessAccounts.findFirst({ where: eq(businessAccounts.id, data.transferAccountId) });
+        if (ba?.glAccountId) transferGLAccountId = ba.glAccountId;
+    }
 
-    // For now, we just Log Audit that GL would be updated here.
-    // In Phase 25 we have "Post Journal for Sales". We can reuse that logic or call it here.
-    // Since we don't have the full Chart of Accounts context loaded in variable here, I'll allow this placeholder as per "End of shift should not directly modify the General Ledger" - job done.
+    // Default Fallback (Undeposited Funds / Bank) if selection failed but amount exists?
+    // Ideally we enforce selection, but for resilience finding a default asset account is good.
+    // Simplifying: If no GL Account found, we might skip posting that line or error.
+    // We will proceed, but log warning if amounts exist but no account.
 
-    await db.update(shifts).set({ status: "RECONCILED" }).where(eq(shifts.id, shiftId));
+    // 2. Calculate Variances & Totals
+    const expectedCash = Number(shift.expectedCash);
+    const expectedCard = Number(shift.expectedCard);
+    const expectedTransfer = Number(shift.expectedTransfer || 0);
 
-    await logAuditAction(user.id, "RECONCILE_SHIFT", shiftId, "SHIFT", {
-        note: "GL Posted"
+    const verifiedCash = data?.verifiedCash || 0;
+    const verifiedCard = data?.verifiedCard || 0;
+    const verifiedTransfer = data?.verifiedTransfer || 0;
+
+    const totalVerified = verifiedCash + verifiedCard + verifiedTransfer;
+    const totalExpected = expectedCash + expectedCard + expectedTransfer;
+    const variance = totalVerified - totalExpected;
+
+    // 3. Post to General Ledger
+    const glTxId = crypto.randomUUID();
+
+    // Header
+    await db.insert(transactions).values({
+        id: glTxId,
+        date: new Date(),
+        description: `Shift Reconciliation #${shiftId.slice(0, 8)}`,
+        status: "POSTED",
+        reference: shiftId,
+        metadata: { type: "SHIFT_RECONCILIATION", shiftId }
     });
 
+    // Credits: Sales Revenue
+    // Using simple "Sales" account. In reality, should split by Net Sales & Tax Liability.
+    // Fetch generic Sales Account
+    const salesAccount = await db.query.accounts.findFirst({ where: eq(accounts.code, "ACC-INC-SALES") });
+    if (salesAccount) {
+        // Credit Revenue (Income)
+        await db.insert(ledgerEntries).values({
+            transactionId: glTxId,
+            accountId: salesAccount.id,
+            amount: totalExpected.toString(), // We credit what we EXPECTED to earn (Revenue)
+            direction: "CREDIT",
+            description: "Shift Revenue Recognized"
+        });
+        // Update Balance (Income increases with Credit? Depends on system. Usually Credit increases Equity/Liability/Income)
+        // Assuming strict double entry: Income is Credit normal.
+        await db.update(accounts).set({ balance: sql`${accounts.balance} + ${totalExpected}` }).where(eq(accounts.id, salesAccount.id));
+    }
+
+    // Debits: Assets (Where money actually went)
+    if (verifiedCash > 0 && cashGLAccountId) {
+        await db.insert(ledgerEntries).values({
+            transactionId: glTxId,
+            accountId: cashGLAccountId,
+            amount: verifiedCash.toString(),
+            direction: "DEBIT",
+            description: "Cash Collected"
+        });
+        await db.update(accounts).set({ balance: sql`${accounts.balance} + ${verifiedCash}` }).where(eq(accounts.id, cashGLAccountId));
+    }
+
+    if (verifiedCard > 0 && cardGLAccountId) {
+        await db.insert(ledgerEntries).values({
+            transactionId: glTxId,
+            accountId: cardGLAccountId,
+            amount: verifiedCard.toString(),
+            direction: "DEBIT",
+            description: "Card Sales Cleared"
+        });
+        await db.update(accounts).set({ balance: sql`${accounts.balance} + ${verifiedCard}` }).where(eq(accounts.id, cardGLAccountId));
+    }
+
+    if (verifiedTransfer > 0 && transferGLAccountId) {
+        await db.insert(ledgerEntries).values({
+            transactionId: glTxId,
+            accountId: transferGLAccountId,
+            amount: verifiedTransfer.toString(),
+            direction: "DEBIT",
+            description: "Bank Transfers Received"
+        });
+        await db.update(accounts).set({ balance: sql`${accounts.balance} + ${verifiedTransfer}` }).where(eq(accounts.id, transferGLAccountId));
+    }
+
+    // Variance (Expense/Income)
+    // If Variance < 0 (Shortage), we need a DEBIT to Expense to balance.
+    // If Variance > 0 (Overage), we need a CREDIT to Income (Other Income) to balance.
+    /*
+        Example: Expected 100 (Cr Revenue 100). Verified 90 (Dr Asset 90).
+        Need Dr 10. (Expense).
+        Equation: Dr 90 + Dr 10 = Cr 100.
+    */
+    if (Math.abs(variance) > 0) {
+        const varianceAccount = await db.query.accounts.findFirst({
+            where: eq(accounts.name, "Cash Over/Short")
+        });
+
+        if (varianceAccount) {
+            if (variance < 0) {
+                // Shortage (Expense) -> DEBIT
+                await db.insert(ledgerEntries).values({
+                    transactionId: glTxId,
+                    accountId: varianceAccount.id,
+                    amount: Math.abs(variance).toString(),
+                    direction: "DEBIT",
+                    description: "Cash Shortage"
+                });
+                await db.update(accounts).set({ balance: sql`${accounts.balance} + ${Math.abs(variance)}` }).where(eq(accounts.id, varianceAccount.id));
+            } else {
+                // Overage (Income) -> CREDIT
+                await db.insert(ledgerEntries).values({
+                    transactionId: glTxId,
+                    accountId: varianceAccount.id,
+                    amount: variance.toString(),
+                    direction: "CREDIT",
+                    description: "Cash Overage"
+                });
+                await db.update(accounts).set({ balance: sql`${accounts.balance} + ${variance}` }).where(eq(accounts.id, varianceAccount.id));
+            }
+        }
+    }
+
+    await db.update(posShifts).set({
+        status: "RECONCILED",
+        verifiedCash: data?.verifiedCash?.toString(),
+        verifiedCard: data?.verifiedCard?.toString(),
+        verifiedTransfer: data?.verifiedTransfer?.toString(),
+        isReconciled: true
+    }).where(eq(posShifts.id, shiftId));
+
+    await logAuditAction(user.id, "RECONCILE_SHIFT", shiftId, "SHIFT", {
+        note: "GL Posted via Business Account Profiling",
+        verifiedCash: data?.verifiedCash,
+        verifiedCard: data?.verifiedCard,
+        glTransactionId: glTxId
+    });
+
+    // 4. Confirm Wallet Deposits
+    // Find all PENDING Ledger Entries for this Shift's Transactions
+    // Wallet Funding Tx -> Ledger Entry (Pending)
+    const pendingWalletDeposits = await db.query.customerLedgerEntries.findMany({
+        where: and(
+            eq(customerLedgerEntries.status, "PENDING"),
+            inArray(
+                customerLedgerEntries.transactionId,
+                db.select({ id: posTransactions.id })
+                    .from(posTransactions)
+                    .where(eq(posTransactions.shiftId, shiftId))
+            )
+        )
+    });
+
+    console.log(`[Reconcile] Found ${pendingWalletDeposits.length} pending wallet deposits to confirm.`);
+
+    for (const entry of pendingWalletDeposits) {
+        try {
+            await confirmWalletDeposit(entry.id);
+            console.log(`[Reconcile] Confirmed Wallet Deposit: ${entry.id}`);
+        } catch (e) {
+            console.error(`[Reconcile] Failed to confirm deposit ${entry.id}:`, e);
+            // Non-blocking? Or should we fail?
+            // Ideally non-blocking so shift closes, but we log error.
+        }
+    }
+
+    if (process.env.IS_SCRIPT !== "true") {
+        revalidatePath("/dashboard/business/revenue");
+    }
     return { success: true };
 }
 
@@ -292,16 +475,37 @@ export async function processTransaction(data: ProcessTransactionData) {
     return await processTransactionCore(data, user, db);
 }
 
+
 export async function processTransactionCore(data: ProcessTransactionData, user: any, db: any, skipRevalidation = false) {
 
-    // 1. Validation
+    // 1. Validation & Tax Calculation
     const subtotal = roundToTwo(data.items.reduce((sum, i) => sum + (i.quantity * i.price), 0));
-    const totalPaid = roundToTwo(data.payments.reduce((sum, p) => sum + p.amount, 0));
-    const finalTotal = data.finalTotal ?? subtotal; // Fallback if simple
 
-    // Allow slight float diff
-    if (Math.abs(totalPaid - finalTotal) > 0.05) {
-        throw new Error(`Payment mismatch: Total ${finalTotal}, Paid ${totalPaid} `);
+    // Server-Side Tax Calculation (Source of Truth)
+    const taxes = await db.select().from(salesTaxes).where(eq(salesTaxes.isEnabled, true));
+    const taxResult = calculateTax(subtotal, taxes);
+
+    const expectedTotal = roundToTwo(taxResult.finalTotal - (data.discountAmount || 0));
+    const totalPaid = roundToTwo(data.payments.reduce((sum, p) => sum + p.amount, 0));
+
+    // Allow slight float diff (e.g., if client sent slightly different total, strictly enforce server total or allow tolerance? 
+    // Ideally we trust server total. If paid is less, error. If paid is more (change), handled by UI or we record "change" here?
+    // POS usually sends exact tender. If cash, "Change" is handled client side, server sees exact total or Payment=Total. 
+    // Let's assume passed payments must match server expectation.
+
+    // Note: If discount applied, it should be handled. Existing logic passed `finalTotal` which might include discount.
+    // We haven't implemented Discount logic in `calculateTax` yet (it takes subtotal). 
+    // We should treat discount as pre-tax or post-tax? Usually depends. 
+    // The current flow in `pos.ts` expects `finalTotal` from client.
+
+    // For now, let's just override data.taxAmount with our server-calculated tax to ensure reporting accuracy, 
+    // but check if client total matches our `subtotal + tax`. 
+    // IF discount is present, logic gets complex without a discount engine.
+    // Let's assume for this task: `finalTotal` = `taxResult.finalTotal`.
+    // If client sent a different total, likely they didn't have the updated tax rates. FAIL the transaction.
+
+    if (Math.abs(expectedTotal - totalPaid) > 0.05) {
+        throw new Error(`Payment mismatch: Server Calculated ${expectedTotal}, Paid ${totalPaid}. Ensure Tax Rules are synced.`);
     }
 
     // Check Loyalty Balance if redeeming
@@ -313,15 +517,35 @@ export async function processTransactionCore(data: ProcessTransactionData, user:
         });
         const currentPoints = Number(customer?.loyaltyPoints || 0);
         if (currentPoints < data.loyaltyPointsRedeemed) {
-            throw new Error(`Insufficient loyalty points.Balance: ${currentPoints} `);
+            throw new Error(`Insufficient loyalty points. Balance: ${currentPoints}`);
         }
     }
+
+    // Server-Side Loyalty Calculation
+    let pointsEarned = 0;
+    if (data.contactId) {
+        // Fetch Outlet Settings via Shift
+        const shiftInfo = await db.query.posShifts.findFirst({
+            where: eq(posShifts.id, data.shiftId),
+            with: { outlet: true }
+        });
+
+        // Default to system default if not set (0.05 = 5%)
+        const earningRate = Number(shiftInfo?.outlet?.loyaltyEarningRate ?? "0.05");
+
+        // Calculate points based on Total Paid (or Net Sales?) - Typically Total Paid
+        pointsEarned = Number((totalPaid * earningRate).toFixed(2));
+    }
+
+    // Override client data with server calculation
+    data.loyaltyPointsEarned = pointsEarned;
+
 
     // 2. Create Transaction
     const [tx] = await db.insert(posTransactions).values([{
         shiftId: data.shiftId,
         contactId: data.contactId,
-        totalAmount: finalTotal.toString(),
+        totalAmount: expectedTotal.toString(), // Use Server Total
         status: "COMPLETED",
         itemsSnapshot: data.items.map(i => ({
             itemId: i.itemId,
@@ -333,8 +557,8 @@ export async function processTransactionCore(data: ProcessTransactionData, user:
         // New Fields
         discountId: data.discountId,
         discountAmount: data.discountAmount?.toString() || "0",
-        taxAmount: data.taxAmount?.toString() || "0",
-        taxSnapshot: data.taxSnapshot,
+        taxAmount: taxResult.totalTax.toString(), // Use Server Tax
+        taxSnapshot: taxResult.breakdown, // Save Breakdown
         loyaltyPointsEarned: data.loyaltyPointsEarned?.toString() || "0",
         loyaltyPointsRedeemed: data.loyaltyPointsRedeemed?.toString() || "0",
     }]).returning();
@@ -352,8 +576,8 @@ export async function processTransactionCore(data: ProcessTransactionData, user:
 
     // 4. Update Stock (Allow Negative) - Only for Physical
     // Resolve Shift Outlet
-    const shift = await db.query.shifts.findFirst({
-        where: eq(shifts.id, data.shiftId),
+    const shift = await db.query.posShifts.findFirst({
+        where: eq(posShifts.id, data.shiftId),
         columns: { outletId: true }
     });
     const outletId = shift?.outletId;
@@ -404,7 +628,7 @@ export async function processTransactionCore(data: ProcessTransactionData, user:
             transactionId: tx.id,
             description: `POS Sale #${tx.id.slice(0, 8)} `,
             entryDate: new Date(),
-            debit: finalTotal.toString(),
+            debit: expectedTotal.toString(),
             balanceAfter: "0"
         });
 
@@ -419,7 +643,7 @@ export async function processTransactionCore(data: ProcessTransactionData, user:
         });
     }
 
-    if (!skipRevalidation) revalidatePath("/dashboard/business/pos");
+    if (!skipRevalidation && process.env.IS_SCRIPT !== "true") revalidatePath("/dashboard/business/pos");
     return { success: true, transactionId: tx.id };
 }
 
@@ -555,6 +779,19 @@ export async function getBankAccounts() {
     });
 }
 
+export async function getPosBusinessAccounts() {
+    const user = await getAuthenticatedUser();
+    if (!user) return [];
+
+    const db = await getDb();
+    return await db.query.businessAccounts.findMany({
+        where: eq(businessAccounts.isEnabled, true),
+        with: {
+            glAccount: true
+        }
+    });
+}
+
 // =========================================
 // REFUNDS
 // =========================================
@@ -570,8 +807,8 @@ export async function refundTransaction(data: {
     const db = await getDb();
 
     // Validate Shift Context
-    const shift = await db.query.shifts.findFirst({
-        where: eq(shifts.id, data.shiftId),
+    const shift = await db.query.posShifts.findFirst({
+        where: eq(posShifts.id, data.shiftId),
         columns: { status: true }
     });
     if (!shift || shift.status !== "OPEN") {
@@ -661,8 +898,8 @@ export async function refundTransactionCore(data: {
 
     // 4. Restock Inventory (Add back) - ONLY if PHYSICAL
     // Resolve Shift Outlet
-    const shift = await db.query.shifts.findFirst({
-        where: eq(shifts.id, data.shiftId),
+    const shift = await db.query.posShifts.findFirst({
+        where: eq(posShifts.id, data.shiftId),
         columns: { outletId: true }
     });
     const outletId = shift?.outletId;
@@ -744,7 +981,7 @@ export async function refundTransactionCore(data: {
         }).where(eq(accounts.id, cashAccount.id));
     }
 
-    if (!skipRevalidation) revalidatePath("/dashboard/business/pos");
+    if (!skipRevalidation && process.env.IS_SCRIPT !== "true") revalidatePath("/dashboard/business/pos");
     return { success: true, refundId: refundTx.id };
 }
 
@@ -772,7 +1009,7 @@ export async function confirmShiftReconciliation(id: string) {
     // Audit
     await logAuditAction(user.id, "CONFIRM_RECONCILIATION", rec.shiftId, "SHIFT", { reconciliationId: id });
     await updateShiftStatusIfFullyReconciled(rec.shiftId);
-    revalidatePath(`/ dashboard / business / pos / shifts / ${rec.shiftId} `);
+    revalidatePath(`/dashboard/business/pos/shifts/${rec.shiftId}`);
     return { success: true };
 }
 
@@ -845,7 +1082,7 @@ export async function confirmShiftDeposit(id: string) {
     // Audit
     await logAuditAction(user.id, "CONFIRM_DEPOSIT", dep.shiftId, "SHIFT", { depositId: id });
     await updateShiftStatusIfFullyReconciled(dep.shiftId);
-    revalidatePath(`/ dashboard / business / pos / shifts / ${dep.shiftId} `);
+    revalidatePath(`/dashboard/business/pos/shifts/${dep.shiftId}`);
     return { success: true };
 }
 
@@ -877,5 +1114,5 @@ async function updateShiftStatusIfFullyReconciled(shiftId: string) {
     if (isFullyReconciled) newStatus = "RECONCILED";
     else if (isPartial) newStatus = "PARTIALLY_RECONCILED";
 
-    await db.update(shifts).set({ status: newStatus }).where(eq(shifts.id, shiftId));
+    await db.update(posShifts).set({ status: newStatus }).where(eq(posShifts.id, shiftId));
 }

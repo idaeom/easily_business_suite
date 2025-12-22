@@ -15,6 +15,8 @@ import {
     HoverCardTrigger,
 } from "@/components/ui/hover-card";
 
+import { StandardCOAWizard } from "@/components/StandardCOAWizard";
+
 async function getAccounts() {
     const db = await getDb();
     return db.query.accounts.findMany({
@@ -29,7 +31,10 @@ export default async function AccountsPage() {
         <div className="space-y-6">
             <div className="flex items-center justify-between">
                 <h1 className="text-3xl font-bold tracking-tight">Chart of Accounts</h1>
-                <CreateAccountDialog />
+                <div className="flex gap-2">
+                    <StandardCOAWizard />
+                    <CreateAccountDialog />
+                </div>
             </div>
 
             <Card>

@@ -18,15 +18,20 @@ Manage the entire lifecycle of goods and services.
 
 ### 2. Finance Pro
 Robust financial tracking and integrity.
-*   **General Ledger**: Double-entry accounting core.
-*   **Reconciliation**: Wallet and Bank reconciliation workflows.
-*   **Expenses & Budgeting**: Track spending against allocated budgets.
+*   **General Ledger**: Double-entry accounting core with Standard Chart of Accounts (Service, Retail, Manufacturing templates).
+*   **Revenue Pro**: POS Shift Reconciliation, Cash Variance tracking, and Wallet Funding verification.
+*   **Business Banking**: Management of physical bank accounts and wallets, mapped to GL assets.
+*   **Expenses & Budgeting**: Track spending against allocated budgets with multi-level approval and disbursement logic.
 *   **Financial Reports**: Income statements, Balance sheets, and cash flow (Real-time).
 
 ### 3. HR Pro
-Manage teams and payroll.
+Manage teams, payroll, and compliance (Nigeria Localized).
 *   **Workforce**: Employee directory and roles (RBAC).
-*   **Payroll**: Salary structures and payment processing.
+*   **Payroll Engine**:
+    *   Automated PAYE (Tax) and Pension (8%) calculations.
+    *   Statutory compliance with Consolidated Relief Allowance (CRA).
+    *   Automated GL Posting (Salaries Expense, Tax Payable, Pension Payable).
+*   **Disbursement**: Direct expense logging for payroll liabilities.
 
 ## 🛠 Tech Stack
 

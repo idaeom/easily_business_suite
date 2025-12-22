@@ -1,6 +1,6 @@
 
 import { liveDb as db } from "@/db";
-import { accounts, items, posTransactions, transactionPayments, shifts, ledgerEntries, transactions, users, outlets, contacts, customerLedgerEntries } from "@/db/schema";
+import { accounts, items, posTransactions, transactionPayments, posShifts, ledgerEntries, transactions, users, outlets, contacts, customerLedgerEntries } from "@/db/schema";
 import { eq, sql, inArray } from "drizzle-orm";
 import { processTransactionCore, refundTransactionCore } from "@/actions/pos";
 import { randomUUID } from "crypto";
@@ -49,7 +49,7 @@ async function main() {
         await db.delete(posTransactions).where(inArray(posTransactions.id, posTxIds));
     }
 
-    await db.delete(shifts).where(inArray(shifts.id, allShiftIds));
+    await db.delete(posShifts).where(inArray(posShifts.id, allShiftIds));
 
     // 2. Seed Accounts (Upsert)
     await seedAccount(ACC_SALES, "Sales Revenue", "INCOME", "0");
@@ -73,7 +73,7 @@ async function main() {
 
     // 5. Open Shift A
     console.log("1. Opening Shift A...");
-    await db.insert(shifts).values({
+    await db.insert(posShifts).values({
         id: SHIFT_A_ID,
         outletId: OUTLET_ID,
         cashierId: CASHIER_ID,
@@ -107,11 +107,11 @@ async function main() {
 
     // 7. Close Shift A
     console.log("3. Closing Shift A...");
-    await db.update(shifts).set({ status: "CLOSED", endTime: new Date() }).where(eq(shifts.id, SHIFT_A_ID));
+    await db.update(posShifts).set({ status: "CLOSED", endTime: new Date() }).where(eq(posShifts.id, SHIFT_A_ID));
 
     // 8. Open Shift B
     console.log("4. Opening Shift B...");
-    await db.insert(shifts).values({
+    await db.insert(posShifts).values({
         id: SHIFT_B_ID,
         outletId: OUTLET_ID,
         cashierId: CASHIER_ID,

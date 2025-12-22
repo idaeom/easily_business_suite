@@ -538,7 +538,7 @@ export const dispatchGrnEntries = pgTable("DispatchGrnEntry", {
 // BUSINESS SUITE - INVOICE PRO (POS)
 // =========================================
 
-export const shifts = pgTable("Shift", {
+export const posShifts = pgTable("Shift", {
     id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
     outletId: text("outletId").references(() => outlets.id),
     cashierId: text("cashierId").notNull().references(() => users.id),
@@ -555,13 +555,17 @@ export const shifts = pgTable("Shift", {
     expectedTransfer: decimal("expectedTransfer", { precision: 65, scale: 30 }),
     actualTransfer: decimal("actualTransfer", { precision: 65, scale: 30 }), // Bank Statement Check
 
+    verifiedCash: decimal("verifiedCash", { precision: 65, scale: 30 }),
+    verifiedCard: decimal("verifiedCard", { precision: 65, scale: 30 }),
+    isReconciled: boolean("isReconciled").default(false),
+
     notes: text("notes"),
     createdAt: timestamp("createdAt", { mode: "date" }).defaultNow().notNull(),
 });
 
 export const posTransactions = pgTable("PosTransaction", {
     id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
-    shiftId: text("shiftId").references(() => shifts.id),
+    shiftId: text("shiftId").references(() => posShifts.id),
     saleId: text("saleId").references(() => spSales.id), // Link if it was a pre-ordered sales-pro sale payment
     contactId: text("contactId").references(() => contacts.id), // Was customerId, Link to Customer
 
@@ -591,6 +595,22 @@ export const paymentMethods = pgTable("PaymentMethod", {
     name: text("name").notNull(), // CASH, CARD, TRANSFER, CREDIT, LOYALTY
     code: text("code").unique().notNull(),
     isEnabled: boolean("isEnabled").default(true),
+    glAccountId: text("glAccountId").references(() => accounts.id), // Linked GL Account
+});
+
+export const businessAccounts = pgTable("BusinessAccount", {
+    id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+    name: text("name").notNull(), // e.g. "Front Desk Register", "Access Bank Corp"
+    code: text("code"), // Optional internal code
+    type: text("type").notNull(), // CASH, BANK, MOMO
+
+    // Usage tags to filter in UI: 
+    // REVENUE_COLLECTION (Shift Recon), WALLET_FUNDING (Wallet Recon), EXPENSE_PAYOUT
+    usage: text("usage").array(),
+
+    glAccountId: text("glAccountId").references(() => accounts.id).notNull(), // The actual GL Account
+    isEnabled: boolean("isEnabled").default(true),
+    createdAt: timestamp("createdAt", { mode: "date" }).defaultNow().notNull(),
 });
 
 export const transactionPayments = pgTable("TransactionPayment", {
@@ -603,12 +623,25 @@ export const transactionPayments = pgTable("TransactionPayment", {
     createdAt: timestamp("createdAt", { mode: "date" }).defaultNow().notNull(),
 });
 
+// System Accounting Defaults
+export const accountingConfig = pgTable("AccountingConfig", {
+    id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+    defaultSalesAccountId: text("defaultSalesAccountId").references(() => accounts.id),
+    defaultInventoryAccountId: text("defaultInventoryAccountId").references(() => accounts.id),
+    defaultCogsAccountId: text("defaultCogsAccountId").references(() => accounts.id),
+    defaultVarianceAccountId: text("defaultVarianceAccountId").references(() => accounts.id),
+    updatedAt: timestamp("updatedAt", { mode: "date" }).defaultNow().notNull().$onUpdate(() => new Date()),
+});
+
 export const salesTaxes = pgTable("SalesTax", {
     id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
     name: text("name").notNull(),
     rate: decimal("rate", { precision: 65, scale: 30 }).notNull(), // As Percentage e.g. 7.5
     type: taxTypeEnum("type").default("EXCLUSIVE").notNull(),
     isEnabled: boolean("isEnabled").default(true),
+    glAccountId: text("glAccountId").references(() => accounts.id),
+    createdAt: timestamp("createdAt", { mode: "date" }).defaultNow().notNull(),
+    updatedAt: timestamp("updatedAt", { mode: "date" }).defaultNow().notNull().$onUpdate(() => new Date()),
 });
 
 export const discounts = pgTable("Discount", {
@@ -621,7 +654,7 @@ export const discounts = pgTable("Discount", {
 
 export const shiftReconciliations = pgTable("shift_reconciliations", {
     id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
-    shiftId: text("shiftId").notNull().references(() => shifts.id, { onDelete: 'cascade' }),
+    shiftId: text("shiftId").notNull().references(() => posShifts.id, { onDelete: 'cascade' }),
     paymentMethodCode: text("paymentMethodCode").notNull(), // CASH, CARD, TRANSFER, etc
     accountId: text("accountId").references(() => accounts.id), // Bank/Terminal Account
     status: text("status").default("PENDING"), // PENDING, CONFIRMED
@@ -634,7 +667,7 @@ export const shiftReconciliations = pgTable("shift_reconciliations", {
 
 export const shiftCashDeposits = pgTable("shift_cash_deposits", {
     id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
-    shiftId: text("shiftId").notNull().references(() => shifts.id, { onDelete: 'cascade' }),
+    shiftId: text("shiftId").notNull().references(() => posShifts.id, { onDelete: 'cascade' }),
     amount: decimal("amount", { precision: 65, scale: 30 }).notNull(),
     accountId: text("accountId").references(() => accounts.id), // Bank Account Deposited To
     reference: text("reference"), // Slip Number / Ref
@@ -647,26 +680,26 @@ export const shiftCashDeposits = pgTable("shift_cash_deposits", {
 });
 
 export const shiftReconciliationsRelations = relations(shiftReconciliations, ({ one }) => ({
-    shift: one(shifts, {
+    shift: one(posShifts, {
         fields: [shiftReconciliations.shiftId],
-        references: [shifts.id],
+        references: [posShifts.id],
     }),
 }));
 
 export const shiftCashDepositsRelations = relations(shiftCashDeposits, ({ one }) => ({
-    shift: one(shifts, {
+    shift: one(posShifts, {
         fields: [shiftCashDeposits.shiftId],
-        references: [shifts.id],
+        references: [posShifts.id],
     }),
 }));
 
-export const shiftsRelations = relations(shifts, ({ one, many }) => ({
+export const posShiftsRelations = relations(posShifts, ({ one, many }) => ({
     cashier: one(users, {
-        fields: [shifts.cashierId],
+        fields: [posShifts.cashierId],
         references: [users.id],
     }),
     outlet: one(outlets, {
-        fields: [shifts.outletId],
+        fields: [posShifts.outletId],
         references: [outlets.id],
     }),
     transactions: many(posTransactions),
@@ -935,6 +968,13 @@ export const expensesRelations = relations(expenses, ({ one, many }) => ({
     })
 }));
 
+export const businessAccountsRelations = relations(businessAccounts, ({ one }) => ({
+    glAccount: one(accounts, {
+        fields: [businessAccounts.glAccountId],
+        references: [accounts.id],
+    }),
+}));
+
 export const expenseBeneficiariesRelations = relations(expenseBeneficiaries, ({ one }) => ({
     expense: one(expenses, {
         fields: [expenseBeneficiaries.expenseId],
@@ -1152,6 +1192,8 @@ export const taxRules = pgTable("tax_rules", {
     updatedAt: timestamp("updated_at").defaultNow()
 });
 
+
+
 // =========================================
 // BUSINESS SUITE RELATIONS
 // =========================================
@@ -1329,9 +1371,9 @@ export const dispatchGrnEntriesRelations = relations(dispatchGrnEntries, ({ one 
 // (Removed Duplicate)
 
 export const posTransactionsRelations = relations(posTransactions, ({ one, many }) => ({
-    shift: one(shifts, {
+    shift: one(posShifts, {
         fields: [posTransactions.shiftId],
-        references: [shifts.id],
+        references: [posShifts.id],
     }),
     payments: many(transactionPayments),
     // As Vendor
@@ -1420,6 +1462,7 @@ export type Contact = InferSelectModel<typeof contacts>; // Unified
 export type SpSale = InferSelectModel<typeof spSales>;
 export type SpQuote = InferSelectModel<typeof spQuotes>;
 export type SpRecurringOrder = InferSelectModel<typeof spRecurringOrders>;
+export type SalesTax = InferSelectModel<typeof salesTaxes>;
 
 export type RequestOrder = InferSelectModel<typeof requestOrders>;
 export type RequestGrn = InferSelectModel<typeof requestGrns>;
@@ -1428,10 +1471,11 @@ export type Haulage = InferSelectModel<typeof haulage>;
 export type Dispatch = InferSelectModel<typeof dispatches>;
 export type DispatchGrnEntry = InferSelectModel<typeof dispatchGrnEntries>;
 
-export type Shift = InferSelectModel<typeof shifts>;
+export type Shift = InferSelectModel<typeof posShifts>;
 export type PosTransaction = InferSelectModel<typeof posTransactions>;
 export type PaymentMethod = InferSelectModel<typeof paymentMethods>;
 export type TransactionPayment = InferSelectModel<typeof transactionPayments>;
 export type CustomerLedgerEntry = InferSelectModel<typeof customerLedgerEntries>;
 export type VendorLedgerEntry = InferSelectModel<typeof vendorLedgerEntries>;
 export type ShiftCashDeposit = InferSelectModel<typeof shiftCashDeposits>;
+export type BusinessAccount = InferSelectModel<typeof businessAccounts>;

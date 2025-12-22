@@ -34,16 +34,30 @@ async function getExpense(id: string) {
     });
 }
 
+import { getBusinessAccounts } from "@/actions/finance";
+
+// ...
+
 export default async function ExpenseDetailsPage({ params }: { params: Promise<{ id: string }> }) {
     const { id } = await params;
-    const [expense, accounts] = await Promise.all([
+    const [expense, accounts, businessAccounts] = await Promise.all([
         getExpense(id),
-        getAccounts()
+        getAccounts(),
+        getBusinessAccounts()
     ]);
 
     if (!expense) {
         return <div>Expense not found</div>;
     }
+
+    // Determine which accounts to show for payment
+    // If Business Accounts are set up, use those. Otherwise fallback to all ASSET accounts.
+    const rawSourceAccounts = businessAccounts.length > 0
+        ? businessAccounts.map(b => b.glAccount).filter(Boolean)
+        : accounts.filter((a: any) => a.type === "ASSET");
+
+    // Deduplicate by ID to prevent "duplicate key" React error
+    const sourceAccounts = Array.from(new Map(rawSourceAccounts.map(item => [item?.id, item])).values());
 
     // Convert Decimal to number for Client Component
     const expenseForClient = {
@@ -172,7 +186,7 @@ export default async function ExpenseDetailsPage({ params }: { params: Promise<{
                             </p>
                             <ExpenseActions
                                 expense={expenseForClient}
-                                accounts={accounts.filter((a: any) => a.type === "ASSET")}
+                                accounts={sourceAccounts}
                             />
                         </CardContent>
                     </Card>

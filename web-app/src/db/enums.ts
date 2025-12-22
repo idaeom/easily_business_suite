@@ -34,3 +34,4 @@ export const taxTypeEnum = pgEnum("TaxType", ["INCLUSIVE", "EXCLUSIVE"]);
 
 export type DiscountType = (typeof discountTypeEnum.enumValues)[number];
 export type TaxType = (typeof taxTypeEnum.enumValues)[number];
+export type AccountType = (typeof accountTypeEnum.enumValues)[number];

@@ -257,12 +257,33 @@ export class DisbursementService {
         return db.transaction(async (tx) => {
             // Find or Create General Expense Account
             // Find Expense Account (Use selected category or fallback to General)
+            // Determine Debit Account
             let expenseAccount: { id: string } | undefined;
 
             if (expense.expenseAccountId) {
+                // If explicit account set, use it initially
                 expenseAccount = { id: expense.expenseAccountId };
-            } else {
-                // Fallback to General Expenses
+            }
+
+            // Check if Payroll (Accrued) - Overrides Expense Account if confirmed Payroll
+            const { payrollRuns, accounts: schemaAccounts } = await import("@/db/schema");
+            const payrollRun = await tx.query.payrollRuns.findFirst({
+                where: eq(payrollRuns.expenseId, expenseId)
+            });
+
+            if (payrollRun) {
+                // It's Payroll! Validated as Accrued.
+                // Debit: Payroll Payable (2400)
+                const payableAcc = await tx.query.accounts.findFirst({
+                    where: eq(accounts.code, "2400")
+                });
+                if (payableAcc) {
+                    expenseAccount = { id: payableAcc.id };
+                }
+            }
+
+            if (!expenseAccount) {
+                // Fallback to General Expenses if still null
                 const generalExpense = await tx.query.accounts.findFirst({
                     where: eq(accounts.code, "EXPENSE_GENERAL")
                 });

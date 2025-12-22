@@ -1,8 +1,7 @@
-
 "use server";
 
 import { getDb } from "@/db";
-import { customerLedgerEntries, spSales, posTransactions, contacts, transactionPayments, ledgerEntries, accounts, transactions } from "@/db/schema";
+import { customerLedgerEntries, spSales, posTransactions, contacts, transactionPayments, ledgerEntries, accounts, transactions, posShifts, businessAccounts } from "@/db/schema";
 import { eq, desc, asc, and, gte, lte, lt } from "drizzle-orm";
 import { getAuthenticatedUser } from "@/lib/auth";
 // shifts import removed
@@ -86,13 +85,20 @@ export async function getCustomerLedger(contactId: string, startDate?: Date, end
     // Let's return chronological (oldest to newest) to track balance evolution.
 }
 
-export async function addCustomerBalance(contactId: string, amount: number, notes?: string, method: "CASH" | "TRANSFER" = "CASH", accountId?: string) {
+export async function addCustomerBalance(contactId: string, amount: number, notes?: string, method: "CASH" | "TRANSFER" | "CARD" = "CASH") {
     const user = await getAuthenticatedUser();
     if (!user) throw new Error("Unauthorized");
     const db = await getDb();
 
+    // 0. Find Active Shift (to link transaction)
+    // We query directly to avoid circular dependency with pos.ts
+    const shift = await db.query.posShifts.findFirst({
+        where: and(eq(posShifts.cashierId, user.id), eq(posShifts.status, "OPEN"))
+    });
+
     // 1. Create Transaction (Container for the event)
     const [tx] = await db.insert(posTransactions).values([{
+        shiftId: shift?.id, // Link to Shift
         contactId: contactId,
         totalAmount: amount.toString(),
         status: "COMPLETED", // The "Event" is recorded, but financial impact is Pending
@@ -101,15 +107,12 @@ export async function addCustomerBalance(contactId: string, amount: number, note
     }]).returning();
 
     // 2. Record Payment Details (Source/Dest)
-    if (accountId || method) {
-        // Find payment method code? default to param
-        // In real app, we should validate method exists in `paymentMethods` table.
-        // For now, simple insert.
+    if (method) {
         await db.insert(transactionPayments).values([{
             transactionId: tx.id,
             paymentMethodCode: method,
             amount: amount.toString(),
-            accountId: accountId,
+            // accountId is removed here as it will be determined during Reconciliation
             reference: notes // Use notes as reference for now
         }]);
     }
@@ -145,7 +148,8 @@ export async function getCustomerCreditScore(contactId: string) {
 }
 
 
-export async function confirmWalletDeposit(ledgerId: string) {
+
+export async function confirmWalletDeposit(ledgerId: string, businessAccountId: string) {
     const user = await getAuthenticatedUser();
     if (!user) throw new Error("Unauthorized");
     const db = await getDb();
@@ -161,12 +165,28 @@ export async function confirmWalletDeposit(ledgerId: string) {
     });
 
     if (!entry) throw new Error("Entry not found");
-    if (entry.status === "CONFIRMED") throw new Error("Already confirmed");
+    // if (entry.status === "CONFIRMED") throw new Error("Already confirmed"); // Allow re-confirming/updating? No.
 
     const amount = Number(entry.credit);
     if (amount <= 0) throw new Error("Invalid amount");
 
-    // 2. Update Contact Wallet
+    // 2. Fetch Business Account to get GL Target
+    const businessAccount = await db.query.businessAccounts.findFirst({
+        where: eq(businessAccounts.id, businessAccountId)
+    });
+    if (!businessAccount) throw new Error("Invalid Business Account");
+
+    const targetGlAccountId = businessAccount.glAccountId;
+
+    // 3. Update Contact Wallet (if not already done? Logic assumes it's augmenting balance)
+    // Actually, confirmWalletDeposit usually finalized the pending balance. 
+    // In this system, entries are PENDING until confirmed.
+
+    // Check if we need to update wallet balance. 
+    // If the entry is PENDING, it usually means the money isn't available yet? 
+    // Or is it "Available but not reconciled"?
+    // "Funds received that have not yet been applied to customer wallets" -> Implies balance update happens here.
+
     const contact = await db.query.contacts.findFirst({ where: eq(contacts.id, entry.contactId) });
     const currentBalance = Number(contact?.walletBalance || 0);
     const newBalance = currentBalance + amount;
@@ -175,7 +195,7 @@ export async function confirmWalletDeposit(ledgerId: string) {
         .set({ walletBalance: newBalance.toString() })
         .where(eq(contacts.id, entry.contactId));
 
-    // 3. Update Ledger Entry
+    // 4. Update Ledger Entry
     await db.update(customerLedgerEntries).set({
         status: "CONFIRMED",
         balanceAfter: newBalance.toString(),
@@ -183,20 +203,11 @@ export async function confirmWalletDeposit(ledgerId: string) {
         reconciledAt: new Date()
     }).where(eq(customerLedgerEntries.id, ledgerId));
 
-    // 4. Post to General Ledger (Financial Accounting)
-    // Debit: Bank/Cash (Asset)
-    // Credit: Customer Wallet (Liability)
+    // 5. Post to General Ledger (Smart Split)
+    // Debit: Target Asset Account (e.g., Bank) - FULL AMOUNT
+    // Credit: Split between "Accounts Receivable" (Clearing debt) and "Customer Deposits" (Creating Liability)
 
-    // Find Target Accounts
-    const payment = entry.transaction?.payments?.[0];
-    const bankAccountId = payment?.accountId;
-
-    // Find "Customer Wallets" Liability Account
-    const walletLiabilityAccount = await db.query.accounts.findFirst({
-        where: and(eq(accounts.type, "LIABILITY"), eq(accounts.name, "Customer Wallets"))
-    });
-
-    if (walletLiabilityAccount && bankAccountId) {
+    if (targetGlAccountId) {
         // Create GL Transaction for Wallet Funding
         const [glTx] = await db.insert(transactions).values({
             description: `Wallet Funding - ${contact?.name}`,
@@ -205,27 +216,77 @@ export async function confirmWalletDeposit(ledgerId: string) {
             metadata: { type: "WALLET_FUND", transactionId: entry.transactionId }
         }).returning();
 
-        // Debit Bank
+        // 5a. DEBIT Selected Asset (Bank/Cash) - Full Amount
         await db.insert(ledgerEntries).values({
-            transactionId: glTx.id, // Use GL Header ID
-            accountId: bankAccountId,
+            transactionId: glTx.id,
+            accountId: targetGlAccountId,
             amount: amount.toString(),
             direction: "DEBIT",
             description: `Wallet Funding - ${contact?.name}`
         });
+        await updateAccountBalance(db, targetGlAccountId, amount, "DEBIT");
 
-        // Credit Liability
-        await db.insert(ledgerEntries).values({
-            transactionId: glTx.id, // Use GL Header ID
-            accountId: walletLiabilityAccount.id,
-            amount: amount.toString(),
-            direction: "CREDIT",
-            description: `Wallet Funding - ${contact?.name}`
-        });
+        // 5b. CREDIT Logic (Smart Split)
+        let remainingAmountToCredit = amount;
 
-        // Update Balances
-        await updateAccountBalance(db, bankAccountId, amount, "DEBIT");
-        await updateAccountBalance(db, walletLiabilityAccount.id, amount, "CREDIT");
+        // Step A: Clear Accounts Receivable (if balance was negative)
+        if (currentBalance < 0) {
+            // Amount needed to reach zero (absolute value of negative balance)
+            const arDebt = Math.abs(currentBalance);
+
+            // Allow allocating up to the payment amount or the debt amount, whichever is smaller
+            const amountForAR = Math.min(arDebt, remainingAmountToCredit);
+
+            if (amountForAR > 0) {
+                // Find AR Account
+                const arAccount = await db.query.accounts.findFirst({ where: eq(accounts.code, "1100") });
+                const creditAccount = arAccount || await db.query.accounts.findFirst({ where: eq(accounts.type, "ASSET") });
+
+                if (creditAccount) {
+                    await db.insert(ledgerEntries).values({
+                        transactionId: glTx.id,
+                        accountId: creditAccount.id,
+                        amount: amountForAR.toString(),
+                        direction: "CREDIT",
+                        description: `Payment Applied to AR`
+                    });
+                    // Credit Asset = DECREASE Balance
+                    await updateAccountBalance(db, creditAccount.id, amountForAR, "CREDIT");
+                }
+
+                remainingAmountToCredit -= amountForAR;
+            }
+        }
+
+        // Step B: Credit Customer Deposits (Liability) with remaining surplus
+        if (remainingAmountToCredit > 0) {
+            // Find "Customer Deposits" Liability Account (2300)
+            let walletLiabilityAccount = await db.query.accounts.findFirst({ where: eq(accounts.code, "2300") });
+            if (!walletLiabilityAccount) {
+                // Fallback search
+                walletLiabilityAccount = await db.query.accounts.findFirst({
+                    where: and(eq(accounts.type, "LIABILITY"), like(accounts.name, "%Deposit%"))
+                });
+            }
+            // Ultimate fallback
+            if (!walletLiabilityAccount) {
+                walletLiabilityAccount = await db.query.accounts.findFirst({
+                    where: eq(accounts.type, "LIABILITY")
+                });
+            }
+
+            if (walletLiabilityAccount) {
+                await db.insert(ledgerEntries).values({
+                    transactionId: glTx.id,
+                    accountId: walletLiabilityAccount.id,
+                    amount: remainingAmountToCredit.toString(),
+                    direction: "CREDIT",
+                    description: `Wallet Deposit (Prepayment)`
+                });
+                // Credit Liability = INCREASE Balance
+                await updateAccountBalance(db, walletLiabilityAccount.id, remainingAmountToCredit, "CREDIT");
+            }
+        }
     }
 
     return { success: true };

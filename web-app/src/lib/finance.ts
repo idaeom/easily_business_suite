@@ -62,6 +62,10 @@ export class FinanceService {
 
             // 3. Process Entries
             for (const entry of data.entries) {
+                if (Number.isNaN(entry.amount)) {
+                    throw new Error(`Invalid Amount (NaN) for account ${entry.accountId}`);
+                }
+
                 // Determine direction based on Standard Accounting
                 const direction = entry.amount >= 0 ? "DEBIT" : "CREDIT";
 
@@ -76,7 +80,7 @@ export class FinanceService {
                 // 4. Update Balances Atomically
                 await t.update(accounts)
                     .set({
-                        balance: sql`${accounts.balance} + ${entry.amount}`
+                        balance: sql`${accounts.balance} + ${entry.amount}::decimal`
                     })
                     .where(eq(accounts.id, entry.accountId));
             }

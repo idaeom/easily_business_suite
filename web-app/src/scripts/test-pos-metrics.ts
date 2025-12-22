@@ -1,7 +1,7 @@
 
 import { getPosProducts, getShiftMetrics, getTopSellingItems } from "@/actions/pos";
 import { getDb } from "@/db";
-import { items, users, outlets, contacts, shifts, posTransactions } from "@/db/schema";
+import { items, users, outlets, contacts, posShifts, posTransactions } from "@/db/schema";
 import { eq } from "drizzle-orm";
 
 async function main() {
@@ -36,7 +36,7 @@ async function main() {
     // Open Shift (Manual DB Insert)
     console.log("Opening Test Shift (Direct DB)...");
     const shiftId = `SHIFT-TEST-METRICS-${Date.now()}`;
-    await db.insert(shifts).values({
+    await db.insert(posShifts).values({
         id: shiftId,
         cashierId: user.id,
         outletId: outlet.id,
@@ -74,7 +74,7 @@ async function main() {
     // Cleanup
     console.log("\nCleaning up...");
     await db.delete(posTransactions).where(eq(posTransactions.id, txId));
-    await db.delete(shifts).where(eq(shifts.id, shiftId));
+    await db.delete(posShifts).where(eq(posShifts.id, shiftId));
 
     console.log("\n✅ POS Enhancements Verification Passed.");
     process.exit(0);

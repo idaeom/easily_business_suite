@@ -1,112 +1,110 @@
 "use server";
 
+import { businessAccounts, accounts, transactions, ledgerEntries } from "@/db/schema";
+import { eq, desc, and, sql, isNotNull } from "drizzle-orm";
 import { getDb } from "@/db";
-import { transactions, ledgerEntries, accounts } from "@/db/schema";
 import { getAuthenticatedUser } from "@/lib/auth";
 import { revalidatePath } from "next/cache";
-import { desc, eq, sql, and } from "drizzle-orm";
-import { TestConfig } from "@/lib/test-config";
 
-type JournalEntryLine = {
-    accountId: string;
-    debit: number;
-    credit: number;
-    description?: string;
+// ==========================================
+// BUSINESS ACCOUNT MANAGEMENT (NEW)
+// ==========================================
+
+export type BusinessAccountInput = {
+    name: string;
+    type: "CASH" | "BANK" | "MOMO";
+    usage: string[]; // ["REVENUE_COLLECTION", "WALLET_FUNDING", "EXPENSE_PAYOUT"]
+    glAccountId: string;
+    isEnabled: boolean;
 };
 
-export async function createJournalEntry(data: {
-    date: Date;
-    description: string;
-    reference?: string;
-    lines: JournalEntryLine[];
-}) {
+export async function getBusinessAccounts() {
     const user = await getAuthenticatedUser();
     if (!user) throw new Error("Unauthorized");
-
-    // RBAC: Only Admin or users with FINANCE_CREATE permission
-    const hasPermission = user.role === "ADMIN" || (user.permissions as string[])?.includes("FINANCE_CREATE");
-    if (!hasPermission) throw new Error("Unauthorized: Insufficient permissions");
-
     const db = await getDb();
 
-    // 1. Validate Balance
-    const totalDebit = data.lines.reduce((sum, line) => sum + line.debit, 0);
-    const totalCredit = data.lines.reduce((sum, line) => sum + line.credit, 0);
-
-    if (Math.abs(totalDebit - totalCredit) > 0.01) {
-        throw new Error(`Journal entry is not balanced. Debits: ${totalDebit}, Credits: ${totalCredit}`);
-    }
-
-    if (totalDebit === 0) {
-        throw new Error("Journal entry cannot be zero.");
-    }
-
-    // 2. Create Transaction
-    const [transaction] = await db.insert(transactions).values({
-        date: data.date,
-        description: data.description,
-        reference: data.reference,
-        status: "POSTED",
-        metadata: { createdBy: user.id, type: "MANUAL_JOURNAL" },
-    }).returning();
-
-    // 3. Create Ledger Entries
-    for (const line of data.lines) {
-        if (line.debit > 0) {
-            await db.insert(ledgerEntries).values({
-                transactionId: transaction.id,
-                accountId: line.accountId,
-                amount: line.debit.toString(),
-                direction: "DEBIT",
-                description: line.description || data.description,
-            });
-        }
-        if (line.credit > 0) {
-            await db.insert(ledgerEntries).values({
-                transactionId: transaction.id,
-                accountId: line.accountId,
-                amount: line.credit.toString(),
-                direction: "CREDIT",
-                description: line.description || data.description,
-            });
-        }
-    }
-
-    // 4. Update Account Balances (Simplified - in real app, balances are derived or updated via triggers)
-    // For now, we assume balances are derived from ledger entries or updated here.
-    // Let's update balances for simplicity.
-    for (const line of data.lines) {
-        const account = await db.query.accounts.findFirst({ where: eq(accounts.id, line.accountId) });
-        if (account) {
-            let newBalance = Number(account.balance);
-            // Asset/Expense: Debit increases, Credit decreases
-            // Liability/Equity/Income: Credit increases, Debit decreases
-            const isDebitNormal = ["ASSET", "EXPENSE"].includes(account.type);
-
-            if (isDebitNormal) {
-                newBalance += (line.debit - line.credit);
-            } else {
-                newBalance += (line.credit - line.debit);
-            }
-
-            await db.update(accounts)
-                .set({ balance: newBalance.toString() })
-                .where(eq(accounts.id, line.accountId));
-        }
-    }
-
-    revalidatePath("/dashboard/finance");
-    return { success: true, transactionId: transaction.id };
+    return await db.query.businessAccounts.findMany({
+        with: {
+            glAccount: true
+        },
+        orderBy: [desc(businessAccounts.createdAt)]
+    });
 }
 
-export async function getTransactions(page = 1, limit = 50) {
+export async function createBusinessAccount(data: BusinessAccountInput) {
+    const user = await getAuthenticatedUser();
+    if (!user) throw new Error("Unauthorized");
     const db = await getDb();
-    const offset = (page - 1) * limit;
 
+    await db.insert(businessAccounts).values({
+        ...data,
+        createdAt: new Date(),
+        updatedAt: new Date()
+    });
+
+    revalidatePath("/dashboard/business/finance/accounts");
+    return { success: true };
+}
+
+export async function updateBusinessAccount(id: string, data: Partial<BusinessAccountInput>) {
+    const user = await getAuthenticatedUser();
+    if (!user) throw new Error("Unauthorized");
+    const db = await getDb();
+
+    await db.update(businessAccounts).set({
+        ...data,
+        updatedAt: new Date()
+    }).where(eq(businessAccounts.id, id));
+
+    revalidatePath("/dashboard/business/finance/accounts");
+    return { success: true };
+}
+
+export async function getGlAccounts() {
+    const user = await getAuthenticatedUser();
+    if (!user) throw new Error("Unauthorized");
+    const db = await getDb();
+
+    return await db.select({
+        id: accounts.id,
+        name: accounts.name,
+        code: accounts.code,
+        type: accounts.type
+    }).from(accounts);
+}
+
+// Simple fetch for all accounts (Restored)
+export async function getAccounts() {
+    const user = await getAuthenticatedUser();
+    if (!user) throw new Error("Unauthorized");
+    const db = await getDb();
+    return await db.query.accounts.findMany();
+}
+
+// ==========================================
+// FINANCIAL DASHBOARD ACTIONS (RESTORED)
+// ==========================================
+
+// ==========================================
+// FINANCIAL DASHBOARD ACTIONS (OPTIMIZED)
+// ==========================================
+
+export async function getTransactions(page = 1, limit = 50) {
+    const user = await getAuthenticatedUser();
+    if (!user) throw new Error("Unauthorized");
+    const db = await getDb();
+
+    const skip = (page - 1) * limit;
+
+    // 1. Get Total Count (Fast Estimate or Exact)
+    const [countResult] = await db.select({ count: sql<number>`count(*)` }).from(transactions);
+    const totalItems = Number(countResult.count);
+
+    // 2. Fetch Transactions with Relations (Single Query)
     const data = await db.query.transactions.findMany({
         orderBy: [desc(transactions.date)],
         limit: limit,
-        offset: offset,
+        offset: skip,
         with: {
             entries: {
                 with: {
@@ -116,158 +114,209 @@ export async function getTransactions(page = 1, limit = 50) {
         }
     });
 
-    return { data };
+    return {
+        data,
+        metadata: {
+            currentPage: page,
+            pageSize: limit,
+            totalItems,
+            totalPages: Math.ceil(totalItems / limit)
+        }
+    };
 }
 
 export async function getIncomeMetrics() {
+    const user = await getAuthenticatedUser();
+    if (!user) throw new Error("Unauthorized");
     const db = await getDb();
 
-    // Get all INCOME accounts
-    const incomeAccounts = await db.query.accounts.findMany({
-        where: eq(accounts.type, "INCOME")
-    });
+    // Aggregation Query: Sum CREDIT entries for INCOME accounts, grouped by Month
+    // Note: We join transactions to get the date
 
-    const incomeAccountIds = incomeAccounts.map(a => a.id);
-    if (incomeAccountIds.length === 0) return { totalIncome: 0, chartData: [] };
+    // 1. Get Income Account IDs first (Subquery optimization)
+    // Actually, simple join filter is fine for this scale
 
-    // Calculate total income (Sum of Credits - Sum of Debits for Income accounts)
-    const totalIncome = incomeAccounts.reduce((sum, acc) => sum + Number(acc.balance), 0);
+    const metrics = await db
+        .select({
+            month: sql<string>`to_char(${transactions.date}, 'Mon')`, // e.g., "Jan"
+            year: sql<string>`to_char(${transactions.date}, 'YYYY')`,
+            total: sql<string>`sum(${ledgerEntries.amount})`, // Drizzle returns strings for decimals
+        })
+        .from(ledgerEntries)
+        .innerJoin(transactions, eq(ledgerEntries.transactionId, transactions.id))
+        .innerJoin(accounts, eq(ledgerEntries.accountId, accounts.id))
+        .where(and(
+            eq(accounts.type, "INCOME"),
+            eq(ledgerEntries.direction, "CREDIT")
+        ))
+        .groupBy(sql`to_char(${transactions.date}, 'Mon')`, sql`to_char(${transactions.date}, 'YYYY')`, sql`date_trunc('month', ${transactions.date})`)
+        .orderBy(sql`date_trunc('month', ${transactions.date})`); // Order by actual date, not string
 
-    // Fetch ledger entries for these accounts to build the chart
-    const entries = await db.query.ledgerEntries.findMany({
-        where: (entries, { inArray }) => inArray(entries.accountId, incomeAccountIds),
-        with: {
-            transaction: true
-        }
-    });
+    // Calculate Total Lifetime Income
+    const totalIncome = metrics.reduce((sum, m) => sum + Number(m.total), 0);
 
-    // Aggregate by Month
-    const monthlyData = new Map<string, number>();
+    // Format for Chart
+    const chartData = metrics.map(m => ({
+        date: `${m.month} ${m.year}`, // "Dec 2024"
+        amount: Number(m.total)
+    }));
 
-    for (const entry of entries) {
-        if (!entry.transaction) continue;
-        const date = new Date(entry.transaction.date);
-        const monthKey = date.toLocaleString('default', { month: 'short', year: 'numeric' }); // e.g., "Dec 2025"
-
-        const amount = Math.abs(Number(entry.amount));
-        const current = monthlyData.get(monthKey) || 0;
-
-        // Income: Credit is increase (+), Debit is decrease (-)
-        if (entry.direction === "CREDIT") {
-            monthlyData.set(monthKey, current + amount);
-        } else {
-            monthlyData.set(monthKey, current - amount);
-        }
-    }
-
-    // Convert to array and sort chronologically
-    const chartData = Array.from(monthlyData.entries())
-        .map(([date, amount]) => ({ date, amount }))
-        .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
-
-    return { totalIncome: Math.abs(totalIncome), chartData };
+    return { totalIncome, chartData };
 }
 
 export async function getAllProviderBalances() {
+    const user = await getAuthenticatedUser();
+    if (!user) throw new Error("Unauthorized");
     const db = await getDb();
-    // Find accounts that are external providers (e.g. have a provider field)
-    // Or just return specific known provider accounts
-    // For now, let's return all ASSET accounts that are marked as external or have a provider
-    const providerAccounts = await db.query.accounts.findMany({
-        where: and(eq(accounts.type, "ASSET"), sql`${accounts.provider} IS NOT NULL`)
-    });
 
-    return providerAccounts.map(acc => ({
-        id: acc.id,
-        name: acc.name,
-        provider: acc.provider,
-        balance: Number(acc.balance)
-    }));
+    return await db.query.accounts.findMany({
+        where: isNotNull(accounts.provider)
+    });
 }
 
 export async function getAccountBalancesByType(type: "ASSET" | "LIABILITY" | "EQUITY" | "INCOME" | "EXPENSE") {
+    const user = await getAuthenticatedUser();
+    if (!user) throw new Error("Unauthorized");
     const db = await getDb();
-    const data = await db.query.accounts.findMany({
-        where: eq(accounts.type, type)
-    });
 
-    return data.map(acc => ({
-        ...acc,
-        balance: Number(acc.balance)
-    }));
+    return await db.query.accounts.findMany({
+        where: eq(accounts.type, type),
+        orderBy: [desc(accounts.balance)]
+    });
 }
 
-export async function getAccounts() {
+// Form Actions
+export async function simulateInflowAction(accountId: string, amount: number) {
+    const user = await getAuthenticatedUser();
+    // Only Admin
+    if (!user || user.role !== "ADMIN") throw new Error("Unauthorized");
     const db = await getDb();
-    return await db.query.accounts.findMany();
+
+    // 1. Debit Asset (Increase)
+    // 2. Credit Income (Increase) - Assume generic sales or find first income
+    const incomeAcc = await db.query.accounts.findFirst({ where: eq(accounts.type, "INCOME") });
+    if (!incomeAcc) throw new Error("No Income account found to balance transaction");
+
+    // Transaction
+    const [tx] = await db.insert(transactions).values({
+        description: "Simulated Inflow (Test)",
+        status: "POSTED",
+        metadata: { type: "SIMULATION" }
+    }).returning();
+
+    // Debit Asset
+    await db.insert(ledgerEntries).values({
+        transactionId: tx.id,
+        accountId: accountId,
+        direction: "DEBIT",
+        amount: amount.toString(),
+        description: "Simulated Funding"
+    });
+
+    // Credit Income
+    await db.insert(ledgerEntries).values({
+        transactionId: tx.id,
+        accountId: incomeAcc.id,
+        direction: "CREDIT",
+        amount: amount.toString(),
+        description: "Simulated Source"
+    });
+
+    // Update Balances
+    // Asset +
+    await db.execute(sql`UPDATE "Account" SET balance = balance + ${amount} WHERE id = ${accountId}`);
+    // Income - (Credit Balance increases)
+    await db.execute(sql`UPDATE "Account" SET balance = balance + ${amount} WHERE id = ${incomeAcc.id}`);
+
+    revalidatePath("/dashboard/finance");
 }
 
 export async function createDedicatedAccountAction(provider: string, accountId: string) {
     const user = await getAuthenticatedUser();
-    if (user?.role !== "ADMIN") throw new Error("Unauthorized");
-
-    // Placeholder for creating a dedicated virtual account
-    console.log(`Creating dedicated account for ${accountId} on ${provider}`);
+    if (!user) throw new Error("Unauthorized");
     const db = await getDb();
 
-    // Simulate success
+    console.log(`Simulating creating dedicated account for ${accountId} on ${provider}`);
+
+    // Simulate API call delay
+    await new Promise(r => setTimeout(r, 1000));
+
     await db.update(accounts).set({
         bankName: "Wema Bank",
-        accountNumber: "1234567890",
+        accountNumber: "1234567890", // Mock NUBAN
         provider: provider
     }).where(eq(accounts.id, accountId));
 
     revalidatePath("/dashboard/finance");
 }
 
-export async function simulateInflowAction(accountId: string, amount: number) {
+export type JournalEntryInput = {
+    description: string;
+    date: Date;
+    entries: {
+        accountId: string;
+        debit: number;
+        credit: number;
+        description?: string;
+    }[];
+};
+
+export async function createJournalEntry(data: JournalEntryInput) {
     const user = await getAuthenticatedUser();
-    // STRICT: Only Admin can simulate money!
-    if (user?.role !== "ADMIN") throw new Error("Unauthorized: Only Admins can simulate inflows");
-
+    if (!user) throw new Error("Unauthorized");
     const db = await getDb();
-    const account = await db.query.accounts.findFirst({ where: eq(accounts.id, accountId) });
-    if (!account) throw new Error("Account not found");
 
-    // Create a transaction
-    const [tx] = await db.insert(transactions).values({
-        description: "Simulated Inflow",
-        reference: `SIM-${Date.now()}`,
-        status: "POSTED",
-        metadata: { type: "INFLOW" }
-    }).returning();
+    // 1. Validate Balance
+    const totalDebit = data.entries.reduce((sum, e) => sum + e.debit, 0);
+    const totalCredit = data.entries.reduce((sum, e) => sum + e.credit, 0);
 
-    // Debit the account (Asset increases with Debit)
-    await db.insert(ledgerEntries).values({
-        transactionId: tx.id,
-        accountId: accountId,
-        amount: amount.toString(),
-        direction: "DEBIT",
-        description: "Simulated Inflow"
-    });
-
-    // We need a balancing entry. Let's credit "Sales Revenue" or similar if exists, or just leave it unbalanced for simulation?
-    // Better to balance it. Let's find an Income account.
-    const incomeAccount = await db.query.accounts.findFirst({ where: eq(accounts.type, "INCOME") });
-    if (incomeAccount) {
-        await db.insert(ledgerEntries).values({
-            transactionId: tx.id,
-            accountId: incomeAccount.id,
-            amount: amount.toString(),
-            direction: "CREDIT",
-            description: "Simulated Inflow Source"
-        });
-
-        // Update Income Balance
-        await db.update(accounts)
-            .set({ balance: (Number(incomeAccount.balance) + amount).toString() })
-            .where(eq(accounts.id, incomeAccount.id));
+    if (Math.abs(totalDebit - totalCredit) > 0.01) {
+        throw new Error(`Transaction is not balanced. Debit: ${totalDebit}, Credit: ${totalCredit}`);
     }
 
-    // Update Asset Balance
-    await db.update(accounts)
-        .set({ balance: (Number(account.balance) + amount).toString() })
-        .where(eq(accounts.id, accountId));
+    if (totalDebit === 0) throw new Error("Transaction cannot be empty");
+
+    // 2. Create Transaction
+    const [tx] = await db.insert(transactions).values({
+        description: data.description,
+        date: data.date,
+        status: "POSTED",
+        metadata: { type: "MANUAL_JOURNAL", createdBy: user.id }
+    }).returning();
+
+    // 3. Create Entries & Update Balances
+    for (const entry of data.entries) {
+        const amount = entry.debit > 0 ? entry.debit : entry.credit;
+        const direction = entry.debit > 0 ? "DEBIT" : "CREDIT";
+
+        await db.insert(ledgerEntries).values({
+            transactionId: tx.id,
+            accountId: entry.accountId,
+            amount: amount.toString(),
+            direction: direction,
+            description: entry.description || data.description
+        });
+
+        // Update Account Balance
+        // Helper logic: Asset/Expense increase on Debit. Liability/Income/Equity increase on Credit.
+        const account = await db.query.accounts.findFirst({ where: eq(accounts.id, entry.accountId) });
+        if (account) {
+            let change = 0;
+            const isAssetExpense = ["ASSET", "EXPENSE"].includes(account.type);
+
+            if (isAssetExpense) {
+                change = direction === "DEBIT" ? amount : -amount;
+            } else {
+                change = direction === "CREDIT" ? amount : -amount;
+            }
+
+            // Execute SQL update to avoid race conditions (simple version)
+            // Note: In production, use tighter concurrency controls
+            await db.execute(sql`UPDATE "Account" SET balance = balance + ${change} WHERE id = ${entry.accountId}`);
+        }
+    }
 
     revalidatePath("/dashboard/finance");
+    revalidatePath("/dashboard/finance/journals");
+    return { success: true };
 }

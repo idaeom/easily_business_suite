@@ -12,7 +12,7 @@ import { Loader2, MoreHorizontal, FileCheck, CheckCircle, XCircle } from 'lucide
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
-import { ViewToggle } from "@/components/ui/view-toggle";
+import { Pagination } from "@/components/Pagination";
 import {
     Table,
     TableBody,
@@ -24,7 +24,10 @@ import {
 import { QuoteDetailsDialog } from "./QuoteDetailsDialog";
 
 interface QuotePipelineProps {
-    initialQuotes: any[]; // Using any to include relation data type safely without complex type gymnastics
+    initialQuotes: any[];
+    view?: "card" | "list";
+    page?: number;
+    limit?: number;
 }
 
 const STAGES = {
@@ -36,15 +39,18 @@ const STAGES = {
     EXPIRED: { label: 'Expired', color: 'bg-gray-100 border-gray-200' }
 };
 
-export function QuotePipeline({ initialQuotes }: QuotePipelineProps) {
+export function QuotePipeline({ initialQuotes, view = "card", page = 1, limit = 20 }: QuotePipelineProps) {
     const [quotes, setQuotes] = useState(initialQuotes);
-    const [view, setView] = useState<"grid" | "list">("grid");
     const [selectedQuote, setSelectedQuote] = useState<any>(null);
     const [detailsOpen, setDetailsOpen] = useState(false);
 
-    // Group quotes by status
+    // Filter/Slice for List View
+    // Filter/Slice for BOTH views (Universal Pagination)
+    const displayedQuotes = quotes.slice((page - 1) * limit, page * limit);
+
+    // Group quotes by status (Uses DISPLAYED quotes)
     const getQuotesByStage = (stage: string) => {
-        return quotes.filter(q => q.status === stage);
+        return displayedQuotes.filter(q => q.status === stage);
     };
 
     const handleQuoteUpdate = (updatedQuote: any) => {
@@ -93,10 +99,9 @@ export function QuotePipeline({ initialQuotes }: QuotePipelineProps) {
         <div className="h-full flex flex-col space-y-4">
             <div className="flex justify-between items-center">
                 <h2 className="text-xl font-bold">Sales Pipeline</h2>
-                <ViewToggle view={view} onViewChange={setView} />
             </div>
 
-            {view === "grid" ? (
+            {view === "card" ? (
                 <DragDropContext onDragEnd={onDragEnd}>
                     <div className="grid grid-cols-1 md:grid-cols-6 gap-4 h-[calc(100vh-250px)] min-h-[500px]">
                         {Object.entries(STAGES).map(([stageKey, config]) => (
@@ -190,7 +195,7 @@ export function QuotePipeline({ initialQuotes }: QuotePipelineProps) {
                             </TableRow>
                         </TableHeader>
                         <TableBody>
-                            {quotes.map(quote => (
+                            {displayedQuotes.map(quote => (
                                 <TableRow key={quote.id} onClick={() => handleCardClick(quote)} className="cursor-pointer hover:bg-slate-50">
                                     <TableCell>{format(new Date(quote.quoteDate), "dd MMM yyyy")}</TableCell>
                                     <TableCell>
@@ -218,6 +223,15 @@ export function QuotePipeline({ initialQuotes }: QuotePipelineProps) {
                     </Table>
                 </div>
             )}
+
+            <Pagination
+                currentPage={page}
+                totalItems={quotes.length}
+                pageSize={limit}
+                showViewToggle={true}
+                pageParam="quotePage"
+                limitParam="quoteLimit"
+            />
 
             <QuoteDetailsDialog
                 open={detailsOpen}

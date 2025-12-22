@@ -1,6 +1,6 @@
 
 import { getDb } from "@/db";
-import { shifts } from "@/db/schema";
+import { posShifts } from "@/db/schema";
 import { desc, eq } from "drizzle-orm";
 import { formatCurrency, formatDate } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
@@ -11,9 +11,9 @@ import { ArrowLeft } from "lucide-react";
 
 export default async function ShiftHistoryPage() {
     const db = await getDb();
-    const data = await db.query.shifts.findMany({
+    const data = await db.query.posShifts.findMany({
         with: { cashier: true },
-        orderBy: [desc(shifts.startTime)]
+        orderBy: [desc(posShifts.startTime)]
     });
 
     return (
