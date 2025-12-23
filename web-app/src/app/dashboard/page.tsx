@@ -1,6 +1,7 @@
 import { getEnterpriseMetrics } from "@/actions/dashboard";
 import { QuickActions } from "@/components/dashboard/QuickActions";
 import { ModuleWidget } from "@/components/dashboard/ModuleWidget";
+import { LowStockAlerts } from "@/components/dashboard/LowStockAlerts";
 import {
     BanknotesIcon,
     BriefcaseIcon,
@@ -18,6 +19,8 @@ export default async function DashboardPage() {
 
             {/* Quick Actions */}
             <QuickActions />
+
+            <LowStockAlerts />
 
             {/* Main Modules Grid */}
             <h2 className="text-lg font-semibold text-slate-800 mb-4 px-1">Business Overview</h2>

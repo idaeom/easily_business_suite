@@ -50,6 +50,7 @@ export default async function AccountsPage() {
                                 <TableHead className="w-[50px]"></TableHead>
                                 <TableHead>Name</TableHead>
                                 <TableHead>Type</TableHead>
+                                <TableHead className="text-right">Balance</TableHead>
                                 <TableHead>Linked GL Account</TableHead>
                                 <TableHead>Usage</TableHead>
                                 <TableHead>Status</TableHead>
@@ -59,7 +60,7 @@ export default async function AccountsPage() {
                         <TableBody>
                             {accounts.length === 0 ? (
                                 <TableRow>
-                                    <TableCell colSpan={7} className="h-24 text-center">
+                                    <TableCell colSpan={8} className="h-24 text-center">
                                         No accounts found. Create one to get started.
                                     </TableCell>
                                 </TableRow>
@@ -69,6 +70,16 @@ export default async function AccountsPage() {
                                         <TableCell>{getIcon(account.type)}</TableCell>
                                         <TableCell className="font-medium">{account.name}</TableCell>
                                         <TableCell>{account.type}</TableCell>
+                                        <TableCell className="text-right font-mono">
+                                            {/* @ts-ignore - glAccount is joined */}
+                                            {account.glAccount?.balance ? (
+                                                <span className={Number(account.glAccount.balance) <= 0 ? "text-red-500" : ""}>
+                                                    ₦{Number(account.glAccount.balance).toLocaleString()}
+                                                </span>
+                                            ) : (
+                                                <span className="text-muted-foreground">-</span>
+                                            )}
+                                        </TableCell>
                                         <TableCell>
                                             {/* @ts-ignore - Relation populated by drizzle query */}
                                             {account.glAccount ? (

@@ -53,29 +53,60 @@ export function CompleteDeliveryDialog({ open, onOpenChange, dispatch, onSuccess
     const [isSubmitting, setIsSubmitting] = useState(false);
 
     useEffect(() => {
-        if (dispatch?.sale?.items) {
-            const history = dispatch.items || [];
+        if (!dispatch) return;
 
-            const calculatedItems = dispatch.sale.items.map((saleItem: any) => {
-                const totalOrdered = Number(saleItem.quantity);
-                const deliveredSoFar = history
-                    .filter((h: any) => h.itemId === saleItem.itemId)
-                    .reduce((sum: number, h: any) => sum + Number(h.quantityDelivered), 0);
+        let plannedItems: any[] = [];
 
-                const remaining = totalOrdered - deliveredSoFar;
-
-                return {
-                    itemId: saleItem.itemId,
-                    itemName: saleItem.itemName,
-                    quantityDispatched: Math.max(0, remaining),
-                    quantityDelivered: Math.max(0, remaining),
-                    quantityReturned: 0,
-                    condition: "GOOD",
-                    comments: ""
-                };
-            });
-            setItems(calculatedItems);
+        // Scenario A: Sale (Source of Truth is Sale Items)
+        if (dispatch.sale?.items) {
+            plannedItems = dispatch.sale.items.map((saleItem: any) => ({
+                itemId: saleItem.itemId,
+                itemName: saleItem.itemName,
+                totalOrdered: Number(saleItem.quantity)
+            }));
         }
+        // Scenario B: Transfer (Source of Truth is inferred from Initial Dispatch Entries)
+        else if (dispatch.items && dispatch.items.length > 0) {
+            const itemMap = new Map<string, any>();
+            dispatch.items.forEach((entry: any) => {
+                if (!itemMap.has(entry.itemId)) {
+                    itemMap.set(entry.itemId, {
+                        itemId: entry.itemId,
+                        itemName: entry.item?.name || "Unknown Item",
+                        totalOrdered: 0
+                    });
+                }
+                const current = itemMap.get(entry.itemId);
+                // Assume the entry with the highest 'quantityDispatched' represents the original order
+                if (Number(entry.quantityDispatched) > current.totalOrdered) {
+                    current.totalOrdered = Number(entry.quantityDispatched);
+                }
+            });
+            plannedItems = Array.from(itemMap.values());
+        }
+
+        // Calculate Remaining & State
+        const history = dispatch.items || [];
+
+        const calculatedItems = plannedItems.map(plan => {
+            const deliveredSoFar = history
+                .filter((h: any) => h.itemId === plan.itemId)
+                .reduce((sum: number, h: any) => sum + Number(h.quantityDelivered), 0);
+
+            const remaining = plan.totalOrdered - deliveredSoFar;
+
+            return {
+                itemId: plan.itemId,
+                itemName: plan.itemName,
+                quantityDispatched: Math.max(0, remaining), // Remaining qty to act on
+                quantityDelivered: Math.max(0, remaining),
+                quantityReturned: 0,
+                condition: "GOOD",
+                comments: ""
+            };
+        });
+
+        setItems(calculatedItems);
     }, [dispatch]);
 
     const updateItem = (index: number, field: keyof DeliveryItem, value: any) => {
@@ -160,7 +191,7 @@ export function CompleteDeliveryDialog({ open, onOpenChange, dispatch, onSuccess
                                         <TableRow key={h.id}>
                                             <TableCell className="text-xs">{new Date().toLocaleDateString()}</TableCell>
                                             <TableCell className="text-xs">
-                                                {dispatch.sale?.items?.find((i: any) => i.itemId === h.itemId)?.itemName || "Item"}
+                                                {h.item?.name || dispatch.sale?.items?.find((i: any) => i.itemId === h.itemId)?.itemName || "Item"}
                                             </TableCell>
                                             <TableCell className="text-xs font-mono">{h.quantityDelivered}</TableCell>
                                             <TableCell className="text-xs">{h.condition}</TableCell>

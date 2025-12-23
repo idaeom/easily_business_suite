@@ -1,4 +1,3 @@
-
 import { getPayrollRuns } from "@/app/actions";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -6,9 +5,39 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { Settings2 } from "lucide-react";
+import { getDb } from "@/db";
+import { expenses, accounts, businessAccounts } from "@/db/schema";
+import { eq, and, like, desc, inArray } from "drizzle-orm";
+import { PendingPayrollExpenses } from "@/components/hr/PendingPayrollExpenses";
+
+export const dynamic = "force-dynamic";
 
 export default async function PayrollPage() {
     const runs = await getPayrollRuns();
+    const db = await getDb();
+
+    // Fetch Pending Payroll Expenses
+    // We look for PENDING status AND (Category match OR Description like 'Payroll%')
+    const pendingExpenses = await db.select().from(expenses).where(and(
+        eq(expenses.status, "PENDING"),
+        // We can trust our creation logic: "Salaries & Wages", "Taxes", "Pension" OR Description 'Payroll: ...'
+        // Let's use Description 'Payroll:' as it is most specific to the RUN.
+        like(expenses.description, "Payroll:%")
+    )).orderBy(desc(expenses.incurredAt));
+
+    // Fetch Business Accounts for Payment Source
+    // Fetch Business Accounts for Payment Source (With Balance from GL)
+    const rawBusinessAccounts = await db.query.businessAccounts.findMany({
+        where: inArray(businessAccounts.type, ["BANK", "MOMO"]),
+        with: {
+            glAccount: true
+        }
+    });
+
+    const mappedAccounts = rawBusinessAccounts.map(acc => ({
+        ...acc,
+        balance: acc.glAccount.balance // Hoist balance for UI
+    }));
 
     return (
         <div className="space-y-6">
@@ -25,6 +54,9 @@ export default async function PayrollPage() {
                     </Link>
                 </div>
             </div>
+
+            {/* NEW: Batch Payment Widget */}
+            <PendingPayrollExpenses expenses={pendingExpenses} accounts={mappedAccounts} />
 
             <Card>
                 <CardHeader>

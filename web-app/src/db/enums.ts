@@ -23,10 +23,14 @@ export const salesStatusEnum = pgEnum("SalesStatus", ["AWAITING_CONFIRMATION", "
 export const quoteStatusEnum = pgEnum("QuoteStatus", ["DRAFT", "SENT", "ACCEPTED", "REJECTED", "CONVERTED", "EXPIRED"]);
 export const recurringOrderStatusEnum = pgEnum("RecurringOrderStatus", ["ACTIVE", "PAUSED"]);
 export const recurringFrequencyEnum = pgEnum("RecurringFrequency", ["WEEKLY", "MONTHLY"]);
-export const requestOrderStatusEnum = pgEnum("RequestOrderStatus", ["PENDING_APPROVAL", "APPROVED_FOR_PAYMENT", "DISBURSED", "GOODS_RECEIVED", "CANCELLED"]);
+export const requestOrderStatusEnum = pgEnum("RequestOrderStatus", ["PENDING_APPROVAL", "APPROVED_FOR_PAYMENT", "DISBURSED", "PARTIALLY_RECEIVED", "GOODS_RECEIVED", "CANCELLED"]);
 export const dispatchStatusEnum = pgEnum("DispatchStatus", ["PENDING", "DISPATCHED", "PARTIALLY_DELIVERED", "DELIVERED", "CANCELLED"]);
 export const haulagePaymentStatusEnum = pgEnum("HaulagePaymentStatus", ["PENDING", "PAID"]);
-export const deliveryMethodEnum = pgEnum("DeliveryMethod", ["DELIVERY", "PICKUP"]); // NEW
+export const deliveryMethodEnum = pgEnum("DeliveryMethod", ["DELIVERY", "PICKUP"]);
+
+export const transferStatusEnum = pgEnum("TransferStatus", ["PENDING", "IN_TRANSIT", "PARTIALLY_COMPLETED", "COMPLETED", "CANCELLED"]);
+export const transferTypeEnum = pgEnum("TransferType", ["PICKUP", "DISPATCH"]);
+export const adjustmentTypeEnum = pgEnum("AdjustmentType", ["DAMAGE", "THEFT", "EXPIRED", "CORRECTION", "OTHER"]);
 
 // POS Enhancements
 export const discountTypeEnum = pgEnum("DiscountType", ["PERCENTAGE", "FIXED"]);

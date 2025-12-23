@@ -2,8 +2,9 @@
 
 import { formatCurrency } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import { Printer } from "lucide-react";
+import { Printer, Download } from "lucide-react";
 import { PayrollResult } from "@/lib/payroll-engine";
+import { exportToPDF } from "@/lib/export-utils";
 
 export function Payslip({ data, employeeName, employeeId, period }: { data: PayrollResult, employeeName: string, employeeId: string, period: string }) {
     if (!data) return null;
@@ -12,16 +13,25 @@ export function Payslip({ data, employeeName, employeeId, period }: { data: Payr
         window.print();
     };
 
+    const handleDownloadPDF = () => {
+        // ID 'payslip-content' must match the div below
+        const filename = `Payslip_${employeeName.replace(/\s+/g, '_')}_${period}`;
+        exportToPDF("payslip-content", filename);
+    };
+
     return (
         <div className="flex flex-col items-center">
-            <div className="w-full flex justify-end mb-4 print:hidden">
+            <div className="w-full flex justify-end gap-2 mb-4 print:hidden">
                 <Button onClick={handlePrint} variant="outline" size="sm">
-                    <Printer className="w-4 h-4 mr-2" /> Print / Save PDF
+                    <Printer className="w-4 h-4 mr-2" /> Print
+                </Button>
+                <Button onClick={handleDownloadPDF} size="sm">
+                    <Download className="w-4 h-4 mr-2" /> Save PDF
                 </Button>
             </div>
 
             {/* A4/Paper Container */}
-            <div className="bg-white text-slate-900 w-full max-w-[210mm] min-h-[148mm] mx-auto p-8 shadow-sm border border-slate-200 print:shadow-none print:border-none print:p-0 print:m-0 print:w-full">
+            <div id="payslip-content" className="bg-white text-slate-900 w-full max-w-[210mm] min-h-[148mm] mx-auto p-8 shadow-sm border border-slate-200 print:shadow-none print:border-none print:p-0 print:m-0 print:w-full">
 
                 {/* Header */}
                 <div className="flex justify-between items-start border-b-2 border-slate-800 pb-6 mb-8">

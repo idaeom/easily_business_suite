@@ -91,3 +91,34 @@ export async function createExpenseAction(formData: FormData) {
     revalidatePath(`/dashboard/tasks/${validated.taskId}`);
     return { success: true };
 }
+
+export async function payExpensesBatch(expenseIds: string[], sourceAccountId: string, paymentMethod: string) {
+    const user = await getAuthenticatedUser();
+    if (!user) throw new Error("Unauthorized");
+
+    // We could use a transaction here if ExpenseService supported it, but let's loop for now.
+    // If one fails, we stop? Or try all? 
+    // Let's try all and report errors.
+
+    const results = [];
+
+    for (const id of expenseIds) {
+        try {
+            await ExpenseService.payExpense(id, sourceAccountId, paymentMethod, user.id);
+            results.push({ id, status: "success" });
+        } catch (error: any) {
+            console.error(`Failed to pay expense ${id}`, error);
+            results.push({ id, status: "error", message: error.message });
+        }
+    }
+
+    revalidatePath("/dashboard/hr/payroll");
+    revalidatePath("/dashboard/business/finance/accounts");
+
+    const errors = results.filter(r => r.status === "error");
+    if (errors.length > 0) {
+        return { success: false, message: `Paid ${results.length - errors.length} expenses. Failed: ${errors.length}`, errors };
+    }
+
+    return { success: true };
+}

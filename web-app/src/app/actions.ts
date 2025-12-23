@@ -1498,14 +1498,16 @@ export async function updatePayrollItem(itemId: string, updates: Partial<Payroll
 
     const db = await getDb();
 
+    // 1. Fetch Item & Run
     const item = await db.query.payrollItems.findFirst({
         where: eq(payrollItems.id, itemId),
-        with: { run: true }
+        with: { run: true, user: true } // Include user for name logging
     });
 
     if (!item) throw new Error("Payroll Item not found");
     if (item.run.status !== "DRAFT") throw new Error("Cannot adjust finalized payroll");
 
+    // 2. Prepare Updates
     const currentBreakdown = item.breakdown as any;
     const currentInput = currentBreakdown.input || {
         earnings: { basic: 0, housing: 0, transport: 0, others: 0, bonuses: 0 },
@@ -1517,25 +1519,80 @@ export async function updatePayrollItem(itemId: string, updates: Partial<Payroll
         settings: { ...currentInput.settings, ...(updates.settings || {}) }
     };
 
+    // 3. Generate Diff for Comment
+    const changes: string[] = [];
+    const format = (n: number) => Number(n).toLocaleString();
+
+    // Check Earnings
+    if (newInput.earnings.bonuses !== currentInput.earnings.bonuses) {
+        const from = currentInput.earnings.bonuses;
+        const to = newInput.earnings.bonuses;
+        if (from === 0 && to > 0) changes.push(`added ₦${format(to)} bonus`);
+        else if (from > 0 && to === 0) changes.push(`removed bonus`);
+        else changes.push(`changed bonus from ₦${format(from)} to ₦${format(to)}`);
+    }
+
+    // Check Settings
+    if (newInput.settings.totalDays !== currentInput.settings.totalDays) {
+        changes.push(`changed total work days from ${currentInput.settings.totalDays} to ${newInput.settings.totalDays}`);
+    }
+    if (newInput.settings.absentDays !== currentInput.settings.absentDays) {
+        const from = currentInput.settings.absentDays;
+        const to = newInput.settings.absentDays;
+        if (from === 0 && to > 0) changes.push(`recorded ${to} absent days`);
+        else if (from > 0 && to === 0) changes.push(`removed absent days`);
+        else changes.push(`updated absent days to ${to}`);
+    }
+    if (newInput.settings.pensionVoluntary !== currentInput.settings.pensionVoluntary) {
+        const from = currentInput.settings.pensionVoluntary;
+        const to = newInput.settings.pensionVoluntary;
+        if (from === 0 && to > 0) changes.push(`added ₦${format(to)} voluntary pension contribution`);
+        else if (from > 0 && to === 0) changes.push(`removed voluntary pension`);
+        else changes.push(`updated voluntary pension to ₦${format(to)}`);
+    }
+    if (newInput.settings.otherDeductions !== currentInput.settings.otherDeductions) {
+        const from = currentInput.settings.otherDeductions;
+        const to = newInput.settings.otherDeductions;
+        if (from === 0 && to > 0) changes.push(`added ₦${format(to)} deduction`);
+        else if (from > 0 && to === 0) changes.push(`removed deduction`);
+        else changes.push(`updated deduction to ₦${format(to)}`);
+    }
+    if (newInput.settings.isPensionActive !== currentInput.settings.isPensionActive) {
+        changes.push(newInput.settings.isPensionActive ? `activated pension` : `deactivated pension`);
+    }
+
+    // 4. Recalculate
     // Fetch Default Tax Rule
-    // We import taxRules schema here to avoid potential top-level circular deps if any, though likely fine.
     const { taxRules } = await import("@/db/schema");
     const defaultRule = await db.query.taxRules.findFirst({
         where: eq(taxRules.isDefault, true)
     });
 
-    // Calculate using the Default Rule (or fallback to 2020 logic inside Engine if undefined)
     const r = PayrollEngine.calculate(newInput, defaultRule?.rules);
 
+    // 5. Update Item
     await db.update(payrollItems).set({
         grossPay: r.gross.toString(),
         netPay: r.netPay.toString(),
         breakdown: { ...r, input: newInput } as any
     }).where(eq(payrollItems.id, itemId));
 
-    const { sum } = await db.select({ sum: sql<string>`sum(\"netPay\")` }).from(payrollItems).where(eq(payrollItems.payrollRunId, item.payrollRunId)).then(res => res[0]);
+    // 6. Update Run Total
+    const { sum } = await db.select({ sum: sql<string>`sum("netPay")` }).from(payrollItems).where(eq(payrollItems.payrollRunId, item.payrollRunId)).then(res => res[0]);
 
     await db.update(payrollRuns).set({ totalAmount: sum || "0" }).where(eq(payrollRuns.id, item.payrollRunId));
+
+    // 7. Log Comment (If changes detected)
+    if (changes.length > 0) {
+        // "Adjusted [Name]: [Action 1], [Action 2], and [Action 3]."
+        const last = changes.pop();
+        const sentence = changes.length > 0
+            ? `${changes.join(", ")} and ${last}`
+            : last;
+
+        const commentContent = `Adjusted ${item.user.name}: ${sentence}.`;
+        await addPayrollComment(item.payrollRunId, commentContent);
+    }
 
     revalidatePath(`/dashboard/hr/payroll/${item.payrollRunId}`);
     return { success: true };

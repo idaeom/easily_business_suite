@@ -10,8 +10,10 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, Responsive
 import { format, subMonths } from "date-fns";
 import { Download, Loader2 } from "lucide-react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { getExpenseReports, getTaskReports, getAccountReports } from "@/actions/reports";
+import { getExpenseReports, getTaskReports, getAccountReports, getPayrollReports, getFinancialStatements } from "@/actions/reports";
 import { DateRange } from "react-day-picker";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { exportDataToExcel } from "@/lib/export-utils";
 
 const COLORS = ["#0088FE", "#00C49F", "#FFBB28", "#FF8042", "#8884d8", "#82ca9d"];
 
@@ -35,28 +37,131 @@ export default function ReportsPage() {
 
     const [accountData, setAccountData] = useState<any[]>([]);
 
+    // New Reporting Data
+    const [payrollData, setPayrollData] = useState<{
+        summary: any;
+        employeeBreakdown: any[];
+        taxSchedule: any[];
+    }>({
+        summary: { totalGross: 0, totalNet: 0, totalTax: 0, totalPension: 0 },
+        employeeBreakdown: [],
+        taxSchedule: []
+    });
+
+    const [financialData, setFinancialData] = useState<{
+        balanceSheet: any;
+        profitAndLoss: any;
+    }>({
+        balanceSheet: {
+            assets: [],
+            liabilities: [],
+            equity: [],
+            totalAssets: 0,
+            totalLiabilities: 0,
+            totalEquity: 0
+        },
+        profitAndLoss: {
+            income: [],
+            expenses: [],
+            totalIncome: 0,
+            totalExpenses: 0,
+            netProfit: 0
+        }
+    });
+
     useEffect(() => {
         startTransition(async () => {
-            const [expenses, tasks, accounts] = await Promise.all([
-                getExpenseReports(dateRange?.from, dateRange?.to, category),
-                getTaskReports(dateRange?.from, dateRange?.to),
-                getAccountReports(dateRange?.from, dateRange?.to)
-            ]);
-            setExpenseData(expenses);
-            setTaskData(tasks);
-            setAccountData(accounts);
+            console.log("Fetching report data...");
+            try {
+                // Fetch independently to prevent one failure from blocking all
+                const expensesPromise = getExpenseReports(dateRange?.from, dateRange?.to, category);
+                const tasksPromise = getTaskReports(dateRange?.from, dateRange?.to);
+                const accountsPromise = getAccountReports(dateRange?.from, dateRange?.to);
+                const payrollPromise = getPayrollReports(dateRange?.from, dateRange?.to);
+                const financialsPromise = getFinancialStatements(dateRange?.from, dateRange?.to);
+
+                const results = await Promise.allSettled([
+                    expensesPromise,
+                    tasksPromise,
+                    accountsPromise,
+                    payrollPromise,
+                    financialsPromise
+                ]);
+
+                // Expenses
+                if (results[0].status === "fulfilled") setExpenseData(results[0].value);
+                else console.error("Expenses fetch failed:", results[0].reason);
+
+                // Tasks
+                if (results[1].status === "fulfilled") setTaskData(results[1].value);
+                else console.error("Tasks fetch failed:", results[1].reason);
+
+                // Accounts
+                if (results[2].status === "fulfilled") setAccountData(results[2].value);
+                else console.error("Accounts fetch failed:", results[2].reason);
+
+                // Payroll
+                if (results[3].status === "fulfilled") setPayrollData(results[3].value);
+                else console.error("Payroll fetch failed:", results[3].reason);
+
+                // Financials
+                if (results[4].status === "fulfilled") setFinancialData(results[4].value);
+                else console.error("Financials fetch failed:", results[4].reason);
+
+            } catch (err) {
+                console.error("Critical error fetching reports:", err);
+            }
         });
     }, [dateRange, category]);
+
+    const handleExportPL = () => {
+        const rows = [
+            { Item: "REVENUE", Balance: "" },
+            ...financialData.profitAndLoss.income.map((i: any) => ({ Item: `  ${i.name}`, Balance: i.amount })),
+            { Item: "TOTAL REVENUE", Balance: financialData.profitAndLoss.totalIncome },
+            { Item: "", Balance: "" },
+            { Item: "EXPENSES", Balance: "" },
+            ...financialData.profitAndLoss.expenses.map((e: any) => ({ Item: `  ${e.name}`, Balance: e.amount })),
+            { Item: "TOTAL EXPENSES", Balance: financialData.profitAndLoss.totalExpenses },
+            { Item: "", Balance: "" },
+            { Item: "NET PROFIT", Balance: financialData.profitAndLoss.netProfit }
+        ];
+        exportDataToExcel(rows, `ProfitLoss_${format(new Date(), "yyyy-MM-dd")}`, "P&L");
+    };
+
+    const handleExportTax = () => {
+        // taxSchedule is likely { name, tin, gross_income, tax_payable ... }
+        exportDataToExcel(payrollData.taxSchedule, `TaxSchedule_${format(new Date(), "yyyy-MM-dd")}`, "Tax Schedule");
+    };
+
+    const handleExportExpenses = () => {
+        exportDataToExcel(expenseData.categoryChartData, `Expenses_${format(new Date(), "yyyy-MM-dd")}`, "Expenses");
+    };
 
     return (
         <div className="space-y-6">
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                 <h1 className="text-3xl font-bold tracking-tight">Reports</h1>
                 <div className="flex items-center gap-2">
-                    <Button variant="outline" disabled={isPending}>
-                        <Download className="mr-2 h-4 w-4" />
-                        Export
-                    </Button>
+                    <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                            <Button variant="outline" disabled={isPending}>
+                                <Download className="mr-2 h-4 w-4" />
+                                Export
+                            </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent>
+                            <DropdownMenuItem onClick={handleExportPL}>
+                                Profit & Loss (Excel)
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={handleExportTax}>
+                                Tax Schedule (Excel)
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={handleExportExpenses}>
+                                Expense Summary (Excel)
+                            </DropdownMenuItem>
+                        </DropdownMenuContent>
+                    </DropdownMenu>
                 </div>
             </div>
 
@@ -90,6 +195,8 @@ export default function ReportsPage() {
             <Tabs defaultValue="expenses" className="space-y-4">
                 <TabsList>
                     <TabsTrigger value="expenses">Expenses</TabsTrigger>
+                    <TabsTrigger value="financials">Financial Statements</TabsTrigger>
+                    <TabsTrigger value="payroll">Payroll</TabsTrigger>
                     <TabsTrigger value="tasks">Tasks</TabsTrigger>
                     <TabsTrigger value="accounts">Charts of Accounts</TabsTrigger>
                 </TabsList>
@@ -163,6 +270,115 @@ export default function ReportsPage() {
                             </CardContent>
                         </Card>
                     </div>
+                </TabsContent>
+
+                {/* Financials Tab */}
+                <TabsContent value="financials" className="space-y-4">
+                    <div className="grid gap-6 md:grid-cols-2">
+                        <Card>
+                            <CardHeader><CardTitle>Profit & Loss</CardTitle></CardHeader>
+                            <CardContent>
+                                <Table>
+                                    <TableHeader>
+                                        <TableRow>
+                                            <TableHead>Item</TableHead>
+                                            <TableHead className="text-right">Balance</TableHead>
+                                        </TableRow>
+                                    </TableHeader>
+                                    <TableBody>
+                                        <TableRow className="bg-slate-50 font-bold"><TableCell colSpan={2}>Revenue</TableCell></TableRow>
+                                        {financialData.profitAndLoss.income.map((i: any) => (
+                                            <TableRow key={i.id}><TableCell className="pl-4">{i.name}</TableCell><TableCell className="text-right">{i.amount?.toFixed(2) || "0.00"}</TableCell></TableRow>
+                                        ))}
+                                        <TableRow className="font-bold border-t-2"><TableCell>Total Revenue</TableCell><TableCell className="text-right">{financialData.profitAndLoss.totalIncome.toFixed(2)}</TableCell></TableRow>
+
+                                        <TableRow className="bg-slate-50 font-bold"><TableCell colSpan={2}>Expenses</TableCell></TableRow>
+                                        {financialData.profitAndLoss.expenses.map((e: any) => (
+                                            <TableRow key={e.id}><TableCell className="pl-4">{e.name}</TableCell><TableCell className="text-right">{e.amount?.toFixed(2) || "0.00"}</TableCell></TableRow>
+                                        ))}
+                                        <TableRow className="font-bold border-t-2"><TableCell>Total Expenses</TableCell><TableCell className="text-right">{financialData.profitAndLoss.totalExpenses.toFixed(2)}</TableCell></TableRow>
+
+                                        <TableRow className="font-black text-lg border-t-4"><TableCell>Net Profit</TableCell><TableCell className="text-right">{financialData.profitAndLoss.netProfit.toFixed(2)}</TableCell></TableRow>
+                                    </TableBody>
+                                </Table>
+                            </CardContent>
+                        </Card>
+
+                        <Card>
+                            <CardHeader><CardTitle>Balance Sheet</CardTitle></CardHeader>
+                            <CardContent>
+                                <Table>
+                                    <TableHeader>
+                                        <TableRow>
+                                            <TableHead>Item</TableHead>
+                                            <TableHead className="text-right">Balance</TableHead>
+                                        </TableRow>
+                                    </TableHeader>
+                                    <TableBody>
+                                        <TableRow className="bg-slate-50 font-bold"><TableCell colSpan={2}>Assets</TableCell></TableRow>
+                                        {financialData.balanceSheet.assets.map((a: any, idx: number) => (
+                                            <TableRow key={idx}><TableCell className="pl-4">{a.name}</TableCell><TableCell className="text-right">{a.amount?.toFixed(2) || "0.00"}</TableCell></TableRow>
+                                        ))}
+                                        <TableRow className="font-bold border-t-2"><TableCell>Total Assets</TableCell><TableCell className="text-right">{financialData.balanceSheet.totalAssets.toFixed(2)}</TableCell></TableRow>
+
+                                        <TableRow className="bg-slate-50 font-bold"><TableCell colSpan={2}>Liabilities</TableCell></TableRow>
+                                        {financialData.balanceSheet.liabilities.map((l: any, idx: number) => (
+                                            <TableRow key={idx}><TableCell className="pl-4">{l.name}</TableCell><TableCell className="text-right">{l.amount?.toFixed(2) || "0.00"}</TableCell></TableRow>
+                                        ))}
+                                        <TableRow className="font-bold border-t-2"><TableCell>Total Liabilities</TableCell><TableCell className="text-right">{financialData.balanceSheet.totalLiabilities.toFixed(2)}</TableCell></TableRow>
+
+                                        <TableRow className="bg-slate-50 font-bold"><TableCell colSpan={2}>Equity</TableCell></TableRow>
+                                        {financialData.balanceSheet.equity.map((eq: any, idx: number) => (
+                                            <TableRow key={idx}><TableCell className="pl-4">{eq.name}</TableCell><TableCell className="text-right">{eq.amount?.toFixed(2) || "0.00"}</TableCell></TableRow>
+                                        ))}
+                                        <TableRow className="font-bold border-t-2"><TableCell>Total Equity</TableCell><TableCell className="text-right">{financialData.balanceSheet.totalEquity.toFixed(2)}</TableCell></TableRow>
+                                    </TableBody>
+                                </Table>
+                            </CardContent>
+                        </Card>
+                    </div>
+                </TabsContent>
+
+                {/* Payroll Tab */}
+                <TabsContent value="payroll" className="space-y-4">
+                    <Card>
+                        <CardHeader><CardTitle>Payroll Summary</CardTitle></CardHeader>
+                        <CardContent>
+                            <div className="grid grid-cols-4 gap-4 text-center">
+                                <div className="border p-4 rounded"><div className="text-xs text-muted-foreground">Total Gross</div><div className="text-xl font-bold">₦{Number(payrollData.summary.totalGross).toLocaleString()}</div></div>
+                                <div className="border p-4 rounded"><div className="text-xs text-muted-foreground">Total Net Pay</div><div className="text-xl font-bold">₦{Number(payrollData.summary.totalNet).toLocaleString()}</div></div>
+                                <div className="border p-4 rounded"><div className="text-xs text-muted-foreground">Tax (PAYE)</div><div className="text-xl font-bold">₦{Number(payrollData.summary.totalTax).toLocaleString()}</div></div>
+                                <div className="border p-4 rounded"><div className="text-xs text-muted-foreground">Pension</div><div className="text-xl font-bold">₦{Number(payrollData.summary.totalPension).toLocaleString()}</div></div>
+                            </div>
+                        </CardContent>
+                    </Card>
+
+                    <Card>
+                        <CardHeader><CardTitle>Tax Schedule</CardTitle></CardHeader>
+                        <CardContent>
+                            <Table>
+                                <TableHeader>
+                                    <TableRow>
+                                        <TableHead>Employee</TableHead>
+                                        <TableHead>Tax ID</TableHead>
+                                        <TableHead className="text-right">Gross</TableHead>
+                                        <TableHead className="text-right">Tax</TableHead>
+                                    </TableRow>
+                                </TableHeader>
+                                <TableBody>
+                                    {payrollData.taxSchedule.map((row: any, idx: number) => (
+                                        <TableRow key={idx}>
+                                            <TableCell>{row.name}</TableCell>
+                                            <TableCell>{row.tin || "N/A"}</TableCell>
+                                            <TableCell className="text-right">{row.gross_income?.toFixed(2)}</TableCell>
+                                            <TableCell className="text-right">{row.tax_payable?.toFixed(2)}</TableCell>
+                                        </TableRow>
+                                    ))}
+                                    {payrollData.taxSchedule.length === 0 && <TableRow><TableCell colSpan={4} className="text-center">No records found</TableCell></TableRow>}
+                                </TableBody>
+                            </Table>
+                        </CardContent>
+                    </Card>
                 </TabsContent>
 
                 <TabsContent value="tasks" className="space-y-4">

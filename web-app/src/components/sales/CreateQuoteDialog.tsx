@@ -16,6 +16,8 @@ import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
+import { useRouter } from "next/navigation";
+
 export function CreateQuoteDialog({
     children,
     initialCustomer
@@ -23,6 +25,7 @@ export function CreateQuoteDialog({
     children: React.ReactNode;
     initialCustomer?: { id: string; name: string; phone?: string | null };
 }) {
+    const router = useRouter();
     const [open, setOpen] = useState(false);
     const [step, setStep] = useState(initialCustomer ? 2 : 1);
     const [isPending, startTransition] = useTransition();
@@ -110,6 +113,7 @@ export function CreateQuoteDialog({
                     deliveryMethod: deliveryMethod
                 });
                 toast({ title: "Success", description: "Quote created successfully." });
+                router.refresh();
                 setOpen(false);
                 // Reset State
                 setSelectedCustomer(initialCustomer || null);

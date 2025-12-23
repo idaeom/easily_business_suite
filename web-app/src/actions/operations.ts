@@ -7,6 +7,7 @@ import { getAuthenticatedUser } from "@/lib/auth";
 import { revalidatePath } from "next/cache";
 import { eq, desc } from "drizzle-orm";
 import { logAuditAction } from "./audit";
+import { receiveTransfer } from "./inventory";
 
 // =========================================
 // DISPATCH ACTIONS
@@ -32,7 +33,11 @@ export async function getDispatches() {
             },
             contact: true,
             haulage: true,
-            items: true // GRN Entries (Delivery Log)
+            items: {
+                with: {
+                    item: true
+                }
+            } // GRN Entries (Delivery Log)
         },
         orderBy: [desc(dispatches.createdAt)]
     });
@@ -110,6 +115,11 @@ export async function logDispatchDelivery(data: {
 
     const db = await getDb();
 
+    // Fetch dispatch to check for Transfer link
+    const dispatch = await db.query.dispatches.findFirst({
+        where: eq(dispatches.id, data.dispatchId)
+    });
+
     await db.transaction(async (tx) => {
         // 1. Insert GRN Entries (Log)
         if (data.items.length > 0) {
@@ -142,6 +152,21 @@ export async function logDispatchDelivery(data: {
                 .where(eq(dispatches.id, data.dispatchId));
         }
     });
+
+    // 3. Trigger Inventory Receipt for Transfers
+    if (dispatch?.transferId) {
+        const receivedItems = data.items
+            .filter(i => i.quantityDelivered > 0)
+            .map(i => ({
+                itemId: i.itemId,
+                quantity: i.quantityDelivered,
+                condition: i.condition
+            }));
+
+        if (receivedItems.length > 0) {
+            await receiveTransfer(dispatch.transferId, receivedItems);
+        }
+    }
 
     await logAuditAction(user.id, "LOG_DELIVERY", data.dispatchId, "DISPATCH", {
         count: data.items.length,

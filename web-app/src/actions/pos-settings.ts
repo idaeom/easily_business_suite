@@ -122,6 +122,8 @@ export async function saveLoyaltySettings(outletId: string, earningRate: number,
         loyaltyEarningRate: earningRate.toString(),
         loyaltyRedemptionRate: redemptionRate.toString()
     }).where(eq(outlets.id, outletId));
-    revalidatePath("/dashboard/settings/loyalty");
+    if (process.env.IS_SCRIPT !== "true") {
+        revalidatePath("/dashboard/settings/loyalty");
+    }
     return { success: true };
 }

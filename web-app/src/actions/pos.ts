@@ -1,6 +1,6 @@
 "use server";
 
-import { items, posTransactions, contacts, transactionPayments, posShifts, outlets, taxRules, discounts, transactions, ledgerEntries, customerLedgerEntries, accounts, shiftReconciliations, shiftCashDeposits, inventory, salesTaxes, businessAccounts } from "@/db/schema";
+import { items, posTransactions, contacts, transactionPayments, posShifts, outlets, taxRules, discounts, transactions, ledgerEntries, customerLedgerEntries, accounts, shiftReconciliations, shiftCashDeposits, inventory, salesTaxes, businessAccounts, loyaltyLogs } from "@/db/schema";
 import { eq, and, desc, sql, inArray, gte, lte, asc } from "drizzle-orm";
 import { getDb } from "@/db";
 import { getAuthenticatedUser } from "@/lib/auth";
@@ -313,7 +313,7 @@ export async function reconcileShift(shiftId: string, data?: {
     // Credits: Sales Revenue
     // Using simple "Sales" account. In reality, should split by Net Sales & Tax Liability.
     // Fetch generic Sales Account
-    const salesAccount = await db.query.accounts.findFirst({ where: eq(accounts.code, "ACC-INC-SALES") });
+    const salesAccount = await db.query.accounts.findFirst({ where: eq(accounts.code, "4000") });
     if (salesAccount) {
         // Credit Revenue (Income)
         await db.insert(ledgerEntries).values({
@@ -533,8 +533,12 @@ export async function processTransactionCore(data: ProcessTransactionData, user:
         // Default to system default if not set (0.05 = 5%)
         const earningRate = Number(shiftInfo?.outlet?.loyaltyEarningRate ?? "0.05");
 
-        // Calculate points based on Total Paid (or Net Sales?) - Typically Total Paid
-        pointsEarned = Number((totalPaid * earningRate).toFixed(2));
+        // Calculate points based on Net Paid (Total Paid - Amount Paid via Loyalty)
+        // This prevents "Double Dipping" where you earn points on the redeemed amount.
+        const loyaltyPayment = data.payments.find(p => p.methodCode === "LOYALTY")?.amount || 0;
+        const earningBase = Math.max(0, totalPaid - loyaltyPayment);
+
+        pointsEarned = Number((earningBase * earningRate).toFixed(2));
     }
 
     // Override client data with server calculation
@@ -619,6 +623,30 @@ export async function processTransactionCore(data: ProcessTransactionData, user:
             await db.update(contacts)
                 .set({ loyaltyPoints: sql`${contacts.loyaltyPoints} + ${netChange} ` })
                 .where(eq(contacts.id, data.contactId));
+
+            // Log Earn
+            if (earned > 0) {
+                await db.insert(loyaltyLogs).values({
+                    contactId: data.contactId,
+                    outletId: outletId,
+                    points: earned.toString(),
+                    type: "EARN",
+                    referenceId: tx.id,
+                    description: `Earned points from Sale #${tx.id.slice(0, 8)}`
+                });
+            }
+
+            // Log Redeem
+            if (redeemed > 0) {
+                await db.insert(loyaltyLogs).values({
+                    contactId: data.contactId,
+                    outletId: outletId,
+                    points: (-redeemed).toString(),
+                    type: "REDEEM",
+                    referenceId: tx.id,
+                    description: `Redeemed points on Sale #${tx.id.slice(0, 8)}`
+                });
+            }
         }
 
         // Ledger Entries (Debit/Credit)
@@ -641,6 +669,57 @@ export async function processTransactionCore(data: ProcessTransactionData, user:
             credit: totalPaid.toString(),
             balanceAfter: "0"
         });
+    }
+
+    // 6. COGS POSTING (Cost of Goods Sold)
+    let totalCost = 0;
+    // itemIds defined earlier?
+    // Line 589: const itemIds = data.items.map(i => i.itemId); available.
+    // Line 591: const dbItemsMap... available.
+
+    data.items.forEach(item => {
+        const dbItem = dbItemsMap.get(item.itemId);
+        if (dbItem && ["RESALE", "MANUFACTURED"].includes(dbItem.itemType)) {
+            const cost = Number(dbItem.costPrice || 0);
+            totalCost += (cost * item.quantity);
+        }
+    });
+
+    if (totalCost > 0) {
+        const cogsTxId = crypto.randomUUID();
+        const cogsAccount = await db.query.accounts.findFirst({ where: eq(accounts.code, "5000") });
+        const inventoryAccount = await db.query.accounts.findFirst({ where: eq(accounts.code, "1300") });
+
+        if (cogsAccount && inventoryAccount) {
+            await db.insert(transactions).values({
+                id: cogsTxId,
+                date: new Date(),
+                description: `COGS for Sale #${tx.id.slice(0, 8)}`,
+                status: "POSTED",
+                reference: tx.id,
+                metadata: { type: "COGS", posTransactionId: tx.id }
+            });
+
+            // DEBIT COGS (Expense Increase)
+            await db.insert(ledgerEntries).values({
+                transactionId: cogsTxId,
+                accountId: cogsAccount.id,
+                amount: totalCost.toString(),
+                direction: "DEBIT",
+                description: "Cost of Goods Sold"
+            });
+            await db.update(accounts).set({ balance: sql`${accounts.balance} + ${totalCost}` }).where(eq(accounts.id, cogsAccount.id));
+
+            // CREDIT INVENTORY (Asset Decrease)
+            await db.insert(ledgerEntries).values({
+                transactionId: cogsTxId,
+                accountId: inventoryAccount.id,
+                amount: totalCost.toString(),
+                direction: "CREDIT",
+                description: "Inventory Relief"
+            });
+            await db.update(accounts).set({ balance: sql`${accounts.balance} - ${totalCost}` }).where(eq(accounts.id, inventoryAccount.id));
+        }
     }
 
     if (!skipRevalidation && process.env.IS_SCRIPT !== "true") revalidatePath("/dashboard/business/pos");
@@ -936,7 +1015,7 @@ export async function refundTransactionCore(data: {
     // 6. GL POSTING (General Ledger)
     // Refund: Debit Sales Revenue (Decrease Income), Credit Undeposited Funds (Decrease Asset)
     const incomeAccount = await db.query.accounts.findFirst({
-        where: eq(accounts.code, "ACC-INC-SALES")
+        where: eq(accounts.code, "4000")
     });
     const cashAccount = await db.query.accounts.findFirst({
         where: eq(accounts.code, "ACC-ASSET-002") // Undeposited Funds
@@ -979,6 +1058,55 @@ export async function refundTransactionCore(data: {
         await db.update(accounts).set({
             balance: sql`${accounts.balance} - ${amount}`
         }).where(eq(accounts.id, cashAccount.id));
+    }
+
+    // 7. REVERSE COGS (Cost of Goods Sold)
+    // Increase Inventory Asset (Debit 1300), Decrease COGS Expense (Credit 5000)
+    let totalRefundedCost = 0;
+
+    itemsToRefund.forEach(item => {
+        const dbItem = dbItemsMap.get(item.itemId);
+        if (dbItem && ["RESALE", "MANUFACTURED"].includes(dbItem.itemType)) {
+            const cost = Number(dbItem.costPrice || 0);
+            totalRefundedCost += (cost * item.quantity);
+        }
+    });
+
+    if (totalRefundedCost > 0) {
+        const cogsTxId = crypto.randomUUID();
+        const cogsAccount = await db.query.accounts.findFirst({ where: eq(accounts.code, "5000") });
+        const inventoryAccount = await db.query.accounts.findFirst({ where: eq(accounts.code, "1300") });
+
+        if (cogsAccount && inventoryAccount) {
+            await db.insert(transactions).values({
+                id: cogsTxId,
+                date: new Date(),
+                description: `COGS Reversal for Refund #${refundTx.id.slice(0, 8)}`,
+                status: "POSTED",
+                reference: refundTx.id,
+                metadata: { type: "COGS_REVERSAL", refundTransactionId: refundTx.id }
+            });
+
+            // DEBIT INVENTORY (Asset Increase)
+            await db.insert(ledgerEntries).values({
+                transactionId: cogsTxId,
+                accountId: inventoryAccount.id,
+                amount: totalRefundedCost.toString(),
+                direction: "DEBIT",
+                description: "Inventory Restock (Refund)"
+            });
+            await db.update(accounts).set({ balance: sql`${accounts.balance} + ${totalRefundedCost}` }).where(eq(accounts.id, inventoryAccount.id));
+
+            // CREDIT COGS (Expense Decrease)
+            await db.insert(ledgerEntries).values({
+                transactionId: cogsTxId,
+                accountId: cogsAccount.id,
+                amount: totalRefundedCost.toString(),
+                direction: "CREDIT",
+                description: "COGS Reversal (Refund)"
+            });
+            await db.update(accounts).set({ balance: sql`${accounts.balance} - ${totalRefundedCost}` }).where(eq(accounts.id, cogsAccount.id));
+        }
     }
 
     if (!skipRevalidation && process.env.IS_SCRIPT !== "true") revalidatePath("/dashboard/business/pos");

@@ -40,6 +40,7 @@ export function AccountDialog({ account, glAccounts }: AccountDialogProps) {
     const [glAccountId, setGlAccountId] = useState("");
     const [usage, setUsage] = useState<string[]>([]);
     const [isEnabled, setIsEnabled] = useState(true);
+    const [openingBalance, setOpeningBalance] = useState("");
 
     // Reset/Init on Open
     useEffect(() => {
@@ -50,12 +51,14 @@ export function AccountDialog({ account, glAccounts }: AccountDialogProps) {
                 setGlAccountId(account.glAccountId);
                 setUsage(account.usage || []);
                 setIsEnabled(account.isEnabled ?? true);
+                setOpeningBalance(""); // Not editable on update
             } else {
                 setName("");
                 setType("CASH");
                 setGlAccountId("");
                 setUsage(["REVENUE_COLLECTION"]);
                 setIsEnabled(true);
+                setOpeningBalance("");
             }
         }
     }, [open, account]);
@@ -77,7 +80,8 @@ export function AccountDialog({ account, glAccounts }: AccountDialogProps) {
             type,
             glAccountId,
             usage,
-            isEnabled
+            isEnabled,
+            openingBalance: openingBalance ? Number(openingBalance) : 0
         };
 
         try {
@@ -131,6 +135,23 @@ export function AccountDialog({ account, glAccounts }: AccountDialogProps) {
                                 required
                             />
                         </div>
+
+                        {!account && (
+                            <div className="grid grid-cols-4 items-center gap-4">
+                                <Label htmlFor="openingBalance" className="text-right">
+                                    Opening Balance
+                                </Label>
+                                <Input
+                                    id="openingBalance"
+                                    type="number"
+                                    value={openingBalance}
+                                    onChange={(e) => setOpeningBalance(e.target.value)}
+                                    className="col-span-3"
+                                    placeholder="0.00"
+                                    min="0"
+                                />
+                            </div>
+                        )}
                         <div className="grid grid-cols-4 items-center gap-4">
                             <Label htmlFor="type" className="text-right">
                                 Type

@@ -27,8 +27,12 @@ interface Requisition {
 
 export default function GrnReceiving({ requests }: { requests: Requisition[] }) {
     const { toast } = useToast();
-    // Filter only those ready to receive
-    const pendingReceipt = requests.filter(r => r.status === "APPROVED_FOR_PAYMENT" || r.status === "DISBURSED");
+    // Filter only approved orders or partially received
+    const pendingReceipt = requests.filter(r =>
+        r.status === "APPROVED_FOR_PAYMENT" ||
+        r.status === "DISBURSED" ||
+        r.status === "PARTIALLY_RECEIVED"
+    );
 
     const [selectedReq, setSelectedReq] = useState<Requisition | null>(null);
     const [receiveData, setReceiveData] = useState<{ itemId: string; name: string; ordered: number; received: number; condition: string }[]>([]);
@@ -42,7 +46,8 @@ export default function GrnReceiving({ requests }: { requests: Requisition[] }) 
                 itemId: i.itemId,
                 name: i.item?.name || "Unknown Item",
                 ordered: i.quantity,
-                received: i.quantity, // Default to full receipt
+                received: i.quantity, // Default to full remaining receipt
+                // Ideally calculate remaining here if partial
                 condition: "GOOD"
             })));
         }
@@ -50,7 +55,6 @@ export default function GrnReceiving({ requests }: { requests: Requisition[] }) 
 
     const handleReceive = async () => {
         if (!selectedReq) return;
-
         try {
             await createGrn({
                 requestOrderId: selectedReq.id,
@@ -61,11 +65,12 @@ export default function GrnReceiving({ requests }: { requests: Requisition[] }) 
                     condition: d.condition
                 }))
             });
+
             toast({ title: "GRN Created", description: "Stock updated successfully." });
             setSelectedReq(null);
             setVendorInvoice("");
-        } catch (e) {
-            toast({ title: "Error", description: "Failed to process GRN.", variant: "destructive" });
+        } catch (error: any) {
+            toast({ title: "Error", description: error.message, variant: "destructive" });
         }
     };
 
@@ -83,16 +88,20 @@ export default function GrnReceiving({ requests }: { requests: Requisition[] }) 
                         <CardHeader className="pb-2">
                             <CardTitle className="text-base flex justify-between">
                                 <span>{req.description}</span>
-                                <Badge variant="outline">{req.status}</Badge>
+                                <Badge variant={req.status === "PARTIALLY_RECEIVED" ? "secondary" : "outline"}>
+                                    {req.status === "PARTIALLY_RECEIVED" ? "Partial" : "Approved"}
+                                </Badge>
                             </CardTitle>
                         </CardHeader>
                         <CardContent>
                             <p className="text-sm text-muted-foreground">PO #{req.id.slice(0, 8)}</p>
                             <p className="text-sm">Items: {req.items?.length || 0}</p>
-                            <p className="font-bold mt-2">${parseFloat(req.totalEstimatedAmount).toLocaleString()}</p>
+                            <p className="font-bold mt-2">₦{parseFloat(req.totalEstimatedAmount).toLocaleString()}</p>
                         </CardContent>
                         <CardFooter>
-                            <Button className="w-full" onClick={() => openReceiveDialog(req)}>Receive Goods</Button>
+                            <Button className="w-full" onClick={() => openReceiveDialog(req)}>
+                                {req.status === "PARTIALLY_RECEIVED" ? "Receive More" : "Receive Goods"}
+                            </Button>
                         </CardFooter>
                     </Card>
                 ))}
@@ -115,7 +124,7 @@ export default function GrnReceiving({ requests }: { requests: Requisition[] }) 
                                 <TableRow>
                                     <TableHead>Item</TableHead>
                                     <TableHead>Ordered</TableHead>
-                                    <TableHead>Received</TableHead>
+                                    <TableHead>Receiving Now</TableHead>
                                     <TableHead>Condition</TableHead>
                                 </TableRow>
                             </TableHeader>

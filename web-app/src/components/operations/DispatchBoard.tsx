@@ -179,8 +179,8 @@ export default function DispatchBoard({ dispatches, initialHaulageProviders = []
                                                             <CardContent className="p-3 space-y-2">
                                                                 <div className="flex justify-between items-start">
                                                                     <div>
-                                                                        <div className="font-medium text-sm">{item.contact?.name || "Unknown Customer"}</div>
-                                                                        <div className="text-xs text-muted-foreground">Sale #{item.sale?.id.slice(0, 8)}</div>
+                                                                        <div className="font-medium text-sm">{item.contact?.name || item.deliveryAddress || "Unknown Customer"}</div>
+                                                                        <div className="text-xs text-muted-foreground">{item.sale ? `Sale #${item.sale.id.slice(0, 8)}` : "Internal Transfer"}</div>
                                                                     </div>
                                                                     {item.status !== 'PENDING' && (
                                                                         <Truck className="h-4 w-4 text-blue-600" />
@@ -190,11 +190,11 @@ export default function DispatchBoard({ dispatches, initialHaulageProviders = []
                                                                 <div className="space-y-1 pt-1">
                                                                     <div className="flex items-center gap-2 text-xs text-slate-600">
                                                                         <MapPin className="h-3 w-3" />
-                                                                        <span className="truncate max-w-[200px]">{item.deliveryAddress}</span>
+                                                                        <span className="truncate max-w-[200px]">{item.sale ? item.deliveryAddress : "Direct Transfer"}</span>
                                                                     </div>
                                                                     <div className="flex items-center gap-2 text-xs text-slate-600">
                                                                         <Package className="h-3 w-3" />
-                                                                        <span>{item.sale?.items?.length || 0} Items</span>
+                                                                        <span>{(item.items?.length || item.sale?.items?.length) || 0} Items</span>
                                                                     </div>
                                                                 </div>
 
@@ -223,7 +223,7 @@ export default function DispatchBoard({ dispatches, initialHaulageProviders = []
                         <TableHeader>
                             <TableRow>
                                 <TableHead>Date</TableHead>
-                                <TableHead>Customer</TableHead>
+                                <TableHead>Customer / Dest.</TableHead>
                                 <TableHead>Items</TableHead>
                                 <TableHead>Haulage</TableHead>
                                 <TableHead>Status</TableHead>
@@ -242,10 +242,10 @@ export default function DispatchBoard({ dispatches, initialHaulageProviders = []
                                 }} className="cursor-pointer hover:bg-slate-50">
                                     <TableCell>{format(new Date(item.dispatchDate || item.createdAt), "dd MMM")}</TableCell>
                                     <TableCell>
-                                        <div className="font-medium">{item.contact?.name}</div>
-                                        <div className="text-xs text-muted-foreground">{item.deliveryAddress}</div>
+                                        <div className="font-medium">{item.contact?.name || item.deliveryAddress}</div>
+                                        <div className="text-xs text-muted-foreground">{item.sale ? item.deliveryAddress : "Internal Transfer"}</div>
                                     </TableCell>
-                                    <TableCell>{item.sale?.items?.length || 0} Items</TableCell>
+                                    <TableCell>{(item.items?.length || item.sale?.items?.length) || 0} Items</TableCell>
                                     <TableCell>
                                         {item.haulage ? (
                                             <div className="text-xs">

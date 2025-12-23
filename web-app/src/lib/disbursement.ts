@@ -347,6 +347,50 @@ export class DisbursementService {
                 tx
             );
 
+            // 6. AUTO-COMPLETE PAYROLL RUN
+            // Check if this expense belongs to a Payroll Run
+            const recentPayrollRun = await tx.query.payrollRuns.findFirst({
+                where: eq(payrollRuns.expenseId, expenseId)
+            });
+
+            // What if it's a tax/pension expense (secondary)?
+            // We need to check expenseMeta
+            // Or simpler: find ANY run where expenseMeta value contains this ID
+            // Since JSON search is specific, let's try a direct query if possible or fetch recent PENDING/APPROVED runs
+
+            // OPTIMIZATION: Use the primary link first (Salary). 
+            // If not found, searching JSONB 'expenseMeta' via sql like or brute force might be slow but safe for now.
+
+            let parentRun = recentPayrollRun;
+            if (!parentRun) {
+                // Try searching via expenseMeta using SQL raw query or logical check
+                // For now, let's fetch APPROVED/PARTIAL payroll runs and check in memory (assuming low volume of concurrent runs)
+                const activeRuns = await tx.query.payrollRuns.findMany({
+                    where: eq(payrollRuns.status, "APPROVED")
+                });
+                parentRun = activeRuns.find(r =>
+                    r.expenseMeta && Object.values(r.expenseMeta).includes(expenseId)
+                );
+            }
+
+            if (parentRun && parentRun.expenseMeta) {
+                // Check if ALL related expenses are paid
+                const meta = parentRun.expenseMeta as Record<string, string>;
+                const relatedExpenseIds = Object.values(meta);
+
+                const relatedExpenses = await tx.query.expenses.findMany({
+                    where: (expenses, { inArray }) => inArray(expenses.id, relatedExpenseIds)
+                });
+
+                const allPaid = relatedExpenses.every(e => e.status === "DISBURSED");
+
+                if (allPaid) {
+                    await tx.update(payrollRuns)
+                        .set({ status: "PAID" })
+                        .where(eq(payrollRuns.id, parentRun.id));
+                }
+            }
+
             return { success: true };
         });
     }

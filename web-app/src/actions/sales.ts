@@ -208,6 +208,15 @@ export async function convertQuoteToSale(quoteId: string, overrides?: { discount
     let total = taxResult.finalTotal - discountAmount - loyaltyValue;
     if (total < 0) total = 0;
 
+    // Determine Outlet (User's or Default to First/Main)
+    let targetOutletId = user.outletId;
+    if (!targetOutletId) {
+        const allOutlets = await db.query.outlets.findMany({ limit: 1 });
+        if (allOutlets.length > 0) {
+            targetOutletId = allOutlets[0].id;
+        }
+    }
+
     // 3. Create Sale
     const [sale] = await db.insert(spSales).values([{
         contactId: quote.contactId,
@@ -220,7 +229,7 @@ export async function convertQuoteToSale(quoteId: string, overrides?: { discount
         notes: `Converted from Quote #${quoteId.slice(0, 8)}. Discount: ${discountAmount}, Points: ${loyaltyPointsUsed}`,
         deliveryMethod: quote.deliveryMethod,
         createdById: user.id,
-        outletId: user.outletId
+        outletId: targetOutletId
     }]).returning();
 
     // 4. Create Sale Items & Update Inventory
@@ -237,22 +246,22 @@ export async function convertQuoteToSale(quoteId: string, overrides?: { discount
             }))
         );
 
-        // Update Inventory (if Outlet Linked)
-        if (user.outletId) {
+        // Update Inventory (if Outlet Linked or Defaulted)
+        if (targetOutletId) {
             for (const item of quote.items) {
                 const qty = Number(item.quantity);
 
                 // Atomic Decrement
                 const result = await db.update(inventory)
                     .set({ quantity: sql`${inventory.quantity} - ${qty}` })
-                    .where(and(eq(inventory.itemId, item.itemId), eq(inventory.outletId, user.outletId)))
+                    .where(and(eq(inventory.itemId, item.itemId), eq(inventory.outletId, targetOutletId)))
                     .returning();
 
                 // If no row exists, create one (Negative Stock)
                 if (result.length === 0) {
                     await db.insert(inventory).values({
                         itemId: item.itemId,
-                        outletId: user.outletId,
+                        outletId: targetOutletId,
                         quantity: (0 - qty).toString()
                     });
                 }
@@ -470,6 +479,7 @@ export async function convertQuoteToSale(quoteId: string, overrides?: { discount
     if (process.env.IS_SCRIPT !== "true") {
         revalidatePath("/dashboard/business/sales");
         revalidatePath("/dashboard/business/operations");
+        revalidatePath("/dashboard/business/inventory");
     }
     return { success: true, saleId: sale.id };
 }

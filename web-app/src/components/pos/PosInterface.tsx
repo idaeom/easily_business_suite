@@ -406,7 +406,8 @@ export default function PosInterface({
                         </div>
                         {selectedCustomer && (
                             <div className="text-xs text-right text-gray-400">
-                                Earn +{calculation.pointsEarned.toFixed(2)} pts
+                                {/* Estimate Points on Net Pay (Total - Redemption) */}
+                                Earn +{((finalTotalToPay * loyaltySettings.earningRate) || 0).toFixed(2)} pts
                             </div>
                         )}
                     </div>
@@ -439,7 +440,7 @@ export default function PosInterface({
                     discountAmount: calculation.discountAmount,
                     taxAmount: calculation.taxAmount, // Total tax amount
                     taxSnapshot: calculation.taxesApplied,
-                    loyaltyPointsEarned: calculation.pointsEarned,
+                    loyaltyPointsEarned: Number(((finalTotalToPay * loyaltySettings.earningRate) || 0).toFixed(2)),
                     loyaltyPointsRedeemed: redemption.points,
                 }}
             />

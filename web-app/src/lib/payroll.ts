@@ -251,7 +251,8 @@ export class PayrollService {
         await db.update(payrollRuns)
             .set({
                 status: "APPROVED",
-                // Keeping as Net Pay sum for consistency with UI "Total Net Pay".
+                expenseId: expenseIds.salaryExpenseId, // Link main salary expense for easy access
+                expenseMeta: expenseIds // Store all generated IDs
             })
             .where(eq(payrollRuns.id, runId));
 

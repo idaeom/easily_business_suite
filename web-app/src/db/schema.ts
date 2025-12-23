@@ -25,7 +25,10 @@ import {
     recurringFrequencyEnum,
     requestOrderStatusEnum,
     dispatchStatusEnum,
-    deliveryMethodEnum
+    deliveryMethodEnum,
+    transferStatusEnum,
+    transferTypeEnum,
+    adjustmentTypeEnum
 } from "./enums";
 
 // Re-export enums for convenience (server-side only)
@@ -347,6 +350,27 @@ export const inventory = pgTable("Inventory", {
     unq: uniqueIndex("inventory_item_outlet_unique").on(t.itemId, t.outletId),
 }));
 
+export const itemOutletPrices = pgTable("ItemOutletPrice", {
+    id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+    itemId: text("itemId").notNull().references(() => items.id, { onDelete: 'cascade' }),
+    outletId: text("outletId").notNull().references(() => outlets.id, { onDelete: 'cascade' }),
+    price: decimal("price", { precision: 65, scale: 30 }).notNull(),
+    createdAt: timestamp("createdAt", { mode: "date" }).defaultNow().notNull(),
+    updatedAt: timestamp("updatedAt", { mode: "date" }).defaultNow().notNull().$onUpdate(() => new Date()),
+}, (t) => ({
+    unq: uniqueIndex("item_outlet_price_unique").on(t.itemId, t.outletId),
+}));
+
+// Item Categories (New)
+export const itemCategories = pgTable("ItemCategory", {
+    id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+    name: text("name").notNull().unique(),
+    businessType: text("businessType"), // e.g. "RETAIL", "RESTAURANT" - just for context
+    description: text("description"),
+    createdAt: timestamp("createdAt", { mode: "date" }).defaultNow().notNull(),
+    updatedAt: timestamp("updatedAt", { mode: "date" }).defaultNow().notNull().$onUpdate(() => new Date()),
+});
+
 // Unified Contact Base (Customers & Vendors)
 export const contactTypeEnum = pgEnum("contact_type", ["CUSTOMER", "VENDOR", "BOTH"]);
 
@@ -444,6 +468,20 @@ export const spRecurringOrders = pgTable("SpRecurringOrder", {
     total: decimal("total", { precision: 65, scale: 30 }).notNull(),
 });
 
+// Loyalty Logs
+export const loyaltyLogTypeEnum = pgEnum("loyalty_log_type", ["EARN", "REDEEM", "ADJUSTMENT"]);
+
+export const loyaltyLogs = pgTable("LoyaltyLog", {
+    id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+    contactId: text("contactId").notNull().references(() => contacts.id),
+    outletId: text("outletId").references(() => outlets.id),
+    points: decimal("points", { precision: 65, scale: 30 }).notNull(),
+    type: loyaltyLogTypeEnum("type").notNull(),
+    referenceId: text("referenceId"), // e.g. Sale ID
+    description: text("description"),
+    createdAt: timestamp("createdAt", { mode: "date" }).defaultNow().notNull(),
+});
+
 // =========================================
 // BUSINESS SUITE - INVENTORY PRO
 // =========================================
@@ -484,7 +522,8 @@ export const requestPriceSurveys = pgTable("RequestPriceSurvey", {
 
 export const requestGrns = pgTable("RequestGrn", {
     id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
-    requestOrderId: text("requestOrderId").notNull().references(() => requestOrders.id),
+    requestOrderId: text("requestOrderId").references(() => requestOrders.id), // Nullable for transfers
+    transferId: text("transferId").references(() => inventoryTransfers.id), // New for Transfer receipts
     receivedDate: timestamp("receivedDate", { mode: "date" }).notNull(),
     receivedById: text("receivedById").notNull().references(() => users.id),
     vendorInvoiceNumber: text("vendorInvoiceNumber"),
@@ -506,10 +545,37 @@ export const haulage = pgTable("Haulage", {
     createdAt: timestamp("createdAt", { mode: "date" }).defaultNow().notNull(),
 });
 
+export const inventoryAdjustments = pgTable("InventoryAdjustment", {
+    id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+    itemId: text("itemId").notNull().references(() => items.id),
+    outletId: text("outletId").notNull().references(() => outlets.id),
+    quantityChange: decimal("quantityChange", { precision: 65, scale: 30 }).notNull(), // Positive or Negative
+    reason: adjustmentTypeEnum("reason").notNull(),
+    notes: text("notes"),
+    userId: text("userId").notNull().references(() => users.id),
+    createdAt: timestamp("createdAt", { mode: "date" }).defaultNow().notNull(),
+});
+
+export const inventoryTransfers = pgTable("InventoryTransfer", {
+    id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+    sourceOutletId: text("sourceOutletId").notNull().references(() => outlets.id),
+    destinationOutletId: text("destinationOutletId").notNull().references(() => outlets.id),
+    status: transferStatusEnum("status").default("PENDING").notNull(),
+    type: transferTypeEnum("type").default("DISPATCH").notNull(),
+    items: jsonb("items").$type<{ itemId: string; quantity: number }[]>().notNull(),
+    notes: text("notes"),
+    createdById: text("createdById").notNull().references(() => users.id),
+    receivedById: text("receivedById").references(() => users.id), // When completed
+    receivedAt: timestamp("receivedAt", { mode: "date" }),
+    createdAt: timestamp("createdAt", { mode: "date" }).defaultNow().notNull(),
+    updatedAt: timestamp("updatedAt", { mode: "date" }).defaultNow().notNull().$onUpdate(() => new Date()),
+});
+
 export const dispatches = pgTable("Dispatch", {
     id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
-    salesId: text("salesId").notNull().references(() => spSales.id), // Link to Confirmed Sale
-    contactId: text("contactId").notNull().references(() => contacts.id), // Was customerId
+    salesId: text("salesId").references(() => spSales.id), // OPTIONAL now
+    transferId: text("transferId").references(() => inventoryTransfers.id), // NEW: Link to Transfer
+    contactId: text("contactId").references(() => contacts.id), // Optional if Transfer (Internal)
     outletId: text("outletId").references(() => outlets.id), // Origin
     dispatchDate: timestamp("dispatchDate", { mode: "date" }).defaultNow().notNull(),
     status: dispatchStatusEnum("status").default("PENDING").notNull(),
@@ -1200,11 +1266,37 @@ export const taxRules = pgTable("tax_rules", {
 
 export const outletsRelations = relations(outlets, ({ many }) => ({
     // will add more as we implement Inventory/Ops
+    itemPrices: many(itemOutletPrices),
 }));
 
 export const itemsRelations = relations(items, ({ many }) => ({
     saleItems: many(spSaleItems),
     quoteItems: many(spQuoteItems),
+    inventory: many(inventory),
+    requestOrderItems: many(requestOrderItems), // Often useful
+    outletPrices: many(itemOutletPrices),
+}));
+
+export const itemOutletPricesRelations = relations(itemOutletPrices, ({ one }) => ({
+    item: one(items, {
+        fields: [itemOutletPrices.itemId],
+        references: [items.id],
+    }),
+    outlet: one(outlets, {
+        fields: [itemOutletPrices.outletId],
+        references: [outlets.id],
+    }),
+}));
+
+export const inventoryRelations = relations(inventory, ({ one }) => ({
+    item: one(items, {
+        fields: [inventory.itemId],
+        references: [items.id],
+    }),
+    outlet: one(outlets, {
+        fields: [inventory.outletId],
+        references: [outlets.id],
+    }),
 }));
 
 // CONTACTS (Unified)
@@ -1325,6 +1417,10 @@ export const requestGrnsRelations = relations(requestGrns, ({ one }) => ({
         fields: [requestGrns.requestOrderId],
         references: [requestOrders.id],
     }),
+    transfer: one(inventoryTransfers, {
+        fields: [requestGrns.transferId],
+        references: [inventoryTransfers.id],
+    }),
     receivedBy: one(users, {
         fields: [requestGrns.receivedById],
         references: [users.id],
@@ -1332,6 +1428,10 @@ export const requestGrnsRelations = relations(requestGrns, ({ one }) => ({
 }));
 
 // Operations Relations
+export const inventoryTransfersRelations = relations(inventoryTransfers, ({ many }) => ({
+    grns: many(requestGrns),
+}));
+
 export const haulageRelations = relations(haulage, ({ many }) => ({
     dispatches: many(dispatches),
 }));

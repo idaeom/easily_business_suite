@@ -86,15 +86,24 @@ export const authOptions: NextAuthOptions = {
 
 
 export async function getAuthenticatedUser() {
-    if (process.env.IS_SCRIPT === "true") {
+    console.log("Checking Auth. IS_SCRIPT:", process.env.IS_SCRIPT);
+    if (process.env.IS_SCRIPT) {
         // BYPASS for Scripts
         const { getDb } = await import("@/db");
         const { users } = await import("@/db/schema");
         const { eq } = await import("drizzle-orm");
         const db = await getDb();
-        const admin = await db.query.users.findFirst({
-            where: eq(users.email, "admin@example.com")
+
+        // Try finding any ADMIN first
+        let admin = await db.query.users.findFirst({
+            where: eq(users.role, "ADMIN")
         });
+
+        // Fallback to any user
+        if (!admin) {
+            admin = await db.query.users.findFirst();
+        }
+
         if (admin) {
             return {
                 id: admin.id,
@@ -105,6 +114,9 @@ export async function getAuthenticatedUser() {
                 image: admin.image,
                 outletId: admin.outletId || undefined
             };
+        } else {
+            console.warn("IS_SCRIPT mode: No admin or user found for mock auth.");
+            return null;
         }
     }
 

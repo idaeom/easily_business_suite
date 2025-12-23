@@ -5,23 +5,34 @@ import * as schema from "./schema";
 
 import { cookies } from "next/headers";
 
+// Singleton function to prevent multiple pools in development
+const globalForDb = globalThis as unknown as {
+    livePool: Pool | undefined;
+    testPool: Pool | undefined;
+};
+
 // Live Pool (Default / Public Schema)
-export const livePool = new Pool({
-    connectionString: process.env.DATABASE_URL,
+const liveConnString = process.env.DATABASE_URL;
+export const livePool = globalForDb.livePool || new Pool({
+    connectionString: liveConnString,
+    max: 10, // Max DB connections
 });
 
+if (process.env.NODE_ENV !== "production") globalForDb.livePool = livePool;
+
 // Test Pool (Test Schema)
-// We append options to set search_path to 'test'
-// Note: This assumes Postgres. If using another DB, this might need adjustment.
 const testConnectionString = process.env.DATABASE_URL_TEST ||
     (process.env.DATABASE_URL + (process.env.DATABASE_URL?.includes("?") ? "&" : "?") + "options=-c%20search_path=test");
 
-const testPool = new Pool({
+export const testPool = globalForDb.testPool || new Pool({
     connectionString: testConnectionString,
+    max: 5,
 });
 testPool.on("connect", (client) => {
     client.query("SET search_path TO test");
 });
+
+if (process.env.NODE_ENV !== "production") globalForDb.testPool = testPool;
 
 export const liveDb = drizzle(livePool, { schema });
 export const testDb = drizzle(testPool, { schema });

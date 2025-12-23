@@ -59,6 +59,11 @@ export default function PayrollAdjustmentSheet({ item }: { item: any }) {
     };
 
     async function handleSave() {
+        if (JSON.stringify(input) === JSON.stringify(breakdown.input)) {
+            toast({ title: "No Changes", description: "You haven't made any adjustments.", variant: "default" });
+            return;
+        }
+
         setLoading(true);
         try {
             await updatePayrollItem(item.id, input);

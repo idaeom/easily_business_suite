@@ -21,8 +21,8 @@ export function LoyaltyConfig({ outletId, earningRate, redemptionRate }: Loyalty
     const router = useRouter();
 
     const [form, setForm] = useState({
-        earningRate: earningRate || "0.05",
-        redemptionRate: redemptionRate || "1.0"
+        earningRate: earningRate ? parseFloat(earningRate).toString() : "0.05",
+        redemptionRate: redemptionRate ? parseFloat(redemptionRate).toString() : "1.0"
     });
 
     const handleSubmit = async () => {

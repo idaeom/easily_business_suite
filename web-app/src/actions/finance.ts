@@ -16,6 +16,7 @@ export type BusinessAccountInput = {
     usage: string[]; // ["REVENUE_COLLECTION", "WALLET_FUNDING", "EXPENSE_PAYOUT"]
     glAccountId: string;
     isEnabled: boolean;
+    openingBalance?: number;
 };
 
 export async function getBusinessAccounts() {
@@ -36,11 +37,86 @@ export async function createBusinessAccount(data: BusinessAccountInput) {
     if (!user) throw new Error("Unauthorized");
     const db = await getDb();
 
-    await db.insert(businessAccounts).values({
+    // 0. Enforce Unique GL Account Logic
+    // Check if this GL Account is already used by another Business Account
+    const existingLink = await db.query.businessAccounts.findFirst({
+        where: eq(businessAccounts.glAccountId, data.glAccountId)
+    });
+
+    let finalGlAccountId = data.glAccountId;
+
+    if (existingLink) {
+        // GL is already taken. We must create a new one to avoid "Shared Balance" issues.
+        // Fetch the template GL details
+        const templateGl = await db.query.accounts.findFirst({
+            where: eq(accounts.id, data.glAccountId)
+        });
+
+        if (templateGl) {
+            // Generate a unique code (Mock simple increment for now or random suffix)
+            // Real world: logical increment (1010 -> 1011). random for safety here.
+            const newCode = `${templateGl.code}-${Math.floor(Math.random() * 1000)}`;
+
+            const [newGl] = await db.insert(accounts).values({
+                name: `${data.name} (${templateGl.name})`, // e.g. "GTBank (Main Bank)"
+                code: newCode,
+                type: templateGl.type,
+                parentAccountId: templateGl.parentAccountId,
+                description: `Dedicated account for ${data.name}`,
+                isExternal: false,
+                bankName: data.name
+            }).returning();
+
+            finalGlAccountId = newGl.id;
+        }
+    }
+
+    // 1. Create the Account Record
+    const [newAccount] = await db.insert(businessAccounts).values({
         ...data,
+        glAccountId: finalGlAccountId,
         createdAt: new Date(),
         updatedAt: new Date()
-    });
+    }).returning();
+
+    // 2. Handle Opening Balance (Capital Injection)
+    if (data.openingBalance && data.openingBalance > 0) {
+        // Reuse the logic we validated in our script
+        const { FinanceService } = await import("@/lib/finance");
+
+        // Find/Create Equity Account
+        let equity = await db.query.accounts.findFirst({
+            where: eq(accounts.code, "3000") // Standard Equity Code
+        });
+
+        if (!equity) {
+            equity = await FinanceService.createAccount({
+                name: "Owner's Capital",
+                code: "3000",
+                type: "EQUITY",
+                description: "Capital injection by owners",
+                isExternal: false
+            });
+        }
+
+        // Post Transaction using Service (Ensures Double Entry & Balance Updates)
+        await FinanceService.createTransaction({
+            description: `Opening Balance - ${data.name}`,
+            date: new Date(),
+            entries: [
+                {
+                    accountId: finalGlAccountId, // Use the FINAL (possibly new) GL
+                    amount: data.openingBalance, // Debit (+)
+                    description: "Opening Balance"
+                },
+                {
+                    accountId: equity.id, // Owner's Equity
+                    amount: -data.openingBalance, // Credit (-)
+                    description: "Capital Injection"
+                }
+            ]
+        });
+    }
 
     revalidatePath("/dashboard/business/finance/accounts");
     return { success: true };
