@@ -277,51 +277,53 @@ export default function RequisitionBoard({ data, userRole }: { data: Requisition
                 <DragDropContext onDragEnd={onDragEnd}>
                     <div className="grid grid-cols-3 gap-4 h-[600px]">
                         {columns.map(col => (
-                            <div key={col.id} className="flex flex-col bg-muted/20 rounded-lg p-4 border">
+                            <div key={col.id} className="flex flex-col bg-muted/20 rounded-lg p-4 border h-full">
                                 <h4 className="font-semibold mb-4 text-sm uppercase text-muted-foreground flex justify-between">
                                     {col.title}
                                     <Badge variant="secondary">{reqs.filter(r => r.status === col.id).length}</Badge>
                                 </h4>
-                                <Droppable droppableId={col.id}>
-                                    {(provided) => (
-                                        <div {...provided.droppableProps} ref={provided.innerRef} className="flex-1 space-y-3">
-                                            {/* Note: In Kanban, strict pagination across all cols is weird, but we render 'paginatedReqs' filtered by status. */}
-                                            {paginatedReqs.filter(r => r.status === col.id).map((req, index) => (
-                                                <Draggable key={req.id} draggableId={req.id} index={index}>
-                                                    {(provided) => (
-                                                        <Card
-                                                            ref={provided.innerRef}
-                                                            {...provided.draggableProps}
-                                                            {...provided.dragHandleProps}
-                                                            className="cursor-grab active:cursor-grabbing hover:shadow-md transition-shadow"
-                                                            onClick={() => { setSelectedReq(req); setDetailsOpen(true); }}
-                                                        >
-                                                            <CardHeader className="p-4 pb-2">
-                                                                <div className="flex justify-between items-start">
-                                                                    <span className="text-xs text-muted-foreground">#{req.id.slice(0, 6)}</span>
-                                                                    <span className="text-xs font-mono">{new Date(req.createdAt).toLocaleDateString()}</span>
-                                                                </div>
-                                                                <CardTitle className="text-sm font-medium">{req.description || "Untitled Request"}</CardTitle>
-                                                            </CardHeader>
-                                                            <CardContent className="p-4 pt-2">
-                                                                <div className="flex justify-between items-center mt-2">
-                                                                    {/* Hide Total if not Admin */}
-                                                                    {isAdmin ? (
-                                                                        <span className="text-sm font-bold">₦{Number(req.totalEstimatedAmount).toLocaleString()}</span>
-                                                                    ) : (
-                                                                        <span className="text-sm font-bold text-muted-foreground">---</span>
-                                                                    )}
-                                                                    <div className="text-xs text-muted-foreground">by {req.requesterName}</div>
-                                                                </div>
-                                                            </CardContent>
-                                                        </Card>
-                                                    )}
-                                                </Draggable>
-                                            ))}
-                                            {provided.placeholder}
-                                        </div>
-                                    )}
-                                </Droppable>
+                                <div className="flex-1 overflow-y-auto pr-2">
+                                    <Droppable droppableId={col.id}>
+                                        {(provided) => (
+                                            <div {...provided.droppableProps} ref={provided.innerRef} className="space-y-3 min-h-[100px]">
+                                                {/* Kanban View: Show ALL items properly filtered, scrolling handled by container */}
+                                                {reqs.filter(r => r.status === col.id).map((req, index) => (
+                                                    <Draggable key={req.id} draggableId={req.id} index={index}>
+                                                        {(provided) => (
+                                                            <Card
+                                                                ref={provided.innerRef}
+                                                                {...provided.draggableProps}
+                                                                {...provided.dragHandleProps}
+                                                                className="cursor-grab active:cursor-grabbing hover:shadow-md transition-shadow"
+                                                                onClick={() => { setSelectedReq(req); setDetailsOpen(true); }}
+                                                            >
+                                                                <CardHeader className="p-4 pb-2">
+                                                                    <div className="flex justify-between items-start">
+                                                                        <span className="text-xs text-muted-foreground">#{req.id.slice(0, 6)}</span>
+                                                                        <span className="text-xs font-mono">{new Date(req.createdAt).toLocaleDateString()}</span>
+                                                                    </div>
+                                                                    <CardTitle className="text-sm font-medium">{req.description || "Untitled Request"}</CardTitle>
+                                                                </CardHeader>
+                                                                <CardContent className="p-4 pt-2">
+                                                                    <div className="flex justify-between items-center mt-2">
+                                                                        {/* Hide Total if not Admin */}
+                                                                        {isAdmin ? (
+                                                                            <span className="text-sm font-bold">₦{Number(req.totalEstimatedAmount).toLocaleString()}</span>
+                                                                        ) : (
+                                                                            <span className="text-sm font-bold text-muted-foreground">---</span>
+                                                                        )}
+                                                                        <div className="text-xs text-muted-foreground">by {req.requesterName}</div>
+                                                                    </div>
+                                                                </CardContent>
+                                                            </Card>
+                                                        )}
+                                                    </Draggable>
+                                                ))}
+                                                {provided.placeholder}
+                                            </div>
+                                        )}
+                                    </Droppable>
+                                </div>
                             </div>
                         ))}
                     </div>
@@ -361,8 +363,8 @@ export default function RequisitionBoard({ data, userRole }: { data: Requisition
                 </div>
             )}
 
-            {/* Pagination Controls */}
-            {totalPages > 1 && (
+            {/* Pagination Controls - Only for List View */}
+            {view === "list" && totalPages > 1 && (
                 <div className="flex items-center justify-end gap-2 pt-2">
                     <Button
                         variant="outline"
