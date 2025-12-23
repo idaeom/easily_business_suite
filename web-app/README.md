@@ -1,36 +1,104 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Easily Business Suite
+
+Easily Business Suite is a comprehensive Enterprise Resource Planning (ERP) solution designed to streamline business operations including Point of Sale (POS), Inventory Management, Finance, Human Resources, and Reporting.
+
+## Key Features
+
+### 🛒 Point of Sale (POS)
+*   **Fast Checkout**: Efficient interface for processing sales.
+*   **Payment Split**: Support for multiple payment methods per transaction (Cash, Card, Transfer, Loyalty, Business Accounts).
+*   **Loyalty Integration**: Earn and redeem loyalty points directly at checkout.
+*   **Customer Management**: Link sales to customers for history tracking.
+
+### 📦 Inventory Management
+*   **Real-time Stock Tracking**: View stock levels per outlet and globally.
+*   **Goods Receiving (GRN)**: Manage purchase orders and receive stock partial/full with vendor invoices.
+*   **Stock Transfers**: Dispatch and receive items between outlets.
+*   **Low Stock Alerts**: Visual indicators and dashboard widgets for items running low.
+*   **Product Categories**: Organize items with customizable categories.
+
+### 💰 Finance & Accounting
+*   **Chart of Accounts (COA)**: Standardized accounting structure with flexible GL Mapping.
+*   **Business Accounts**: Manage bank accounts, cash drawers, and mobile wallets.
+*   **Revenue Reconciliation**: Shift-based reconciliation for cash variances and sales verification.
+*   **Financial Reports**: Automated Profit & Loss (P&L) and Balance Sheet generation.
+
+### 👥 HR & Payroll
+*   **Employee Management**: Track employee details, roles, and employment status.
+*   **Payroll Processing**: Automate salary calculations, deductions, and tax schedules.
+*   **Payslip Generation**: Generate and export professional PDF payslips.
+*   **Expense Integration**: Payroll approvals automatically create expense records for disbursement.
+
+### 📊 Reporting
+*   **Sales Reports**: Detailed breakdown of revenue by product, category, and outlet.
+*   **Inventory Reports**: Stock valuation and movement history.
+*   **Payroll Reports**: Salary and tax summaries.
+
+## Tech Stack
+
+*   **Framework**: [Next.js 15](https://nextjs.org/) (App Router)
+*   **Language**: TypeScript
+*   **Database**: PostgreSQL (via Supabase)
+*   **ORM**: [Drizzle ORM](https://orm.drizzle.team/)
+*   **UI Components**: [Shadcn UI](https://ui.shadcn.com/) + Tailwind CSS
+*   **Authentication**: NextAuth.js
 
 ## Getting Started
 
-First, run the development server:
+### Prerequisites
+*   Node.js 18+
+*   PostgreSQL Database (Supabase recommended)
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+### Installation
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+1.  Clone the repository:
+    ```bash
+    git clone https://github.com/idaeom/easily_business_suite.git
+    cd easily_business_suite/web-app
+    ```
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+2.  Install dependencies:
+    ```bash
+    npm install
+    ```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+3.  Configure Environment:
+    Create a `.env` file in the root directory:
+    ```env
+    DATABASE_URL="postgresql://user:password@host:port/db"
+    NEXTAUTH_SECRET="your-secret"
+    NEXTAUTH_URL="http://localhost:3000"
+    ```
 
-## Learn More
+4.  Push Database Schema:
+    ```bash
+    npx drizzle-kit push
+    ```
 
-To learn more about Next.js, take a look at the following resources:
+5.  Seed Default Data (Optional):
+    ```bash
+    npm run seed
+    ```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+6.  Run Development Server:
+    ```bash
+    npm run dev
+    ```
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+    Open [http://localhost:3000](http://localhost:3000) to view the application.
 
-## Deploy on Vercel
+## Development Workflows
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+### Database Updates
+When modifying `src/db/schema.ts`:
+1.  Make changes to the schema file.
+2.  Run `npx drizzle-kit push` to update the database.
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+### Verification Scripts
+Located in `src/scripts/`, these scripts verify core business logic:
+*   `npm run verify-inventory`: Checks inventory flow.
+*   `npm run verify-payroll`: Audits payroll calculations.
+*   `npm run verify-finance`: Ensures GL integrity.
+
+## License
+Private Property of Easily.
