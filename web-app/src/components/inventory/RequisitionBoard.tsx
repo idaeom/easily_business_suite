@@ -118,17 +118,29 @@ export default function RequisitionBoard({ data, userRole }: { data: Requisition
         }
     };
 
+    const [page, setPage] = useState(1);
+    const itemsPerPage = 9;
+
+    const totalPages = Math.ceil(reqs.length / itemsPerPage);
+    const paginatedReqs = reqs.slice((page - 1) * itemsPerPage, page * itemsPerPage);
+
+    // Reset page if out of bounds
+    useEffect(() => {
+        if (page > totalPages && totalPages > 0) {
+            setPage(1);
+        }
+    }, [reqs.length, totalPages, page]);
+
+    // ... (keep existing creation handlers)
+
     const onDragEnd = async (result: DropResult) => {
         const { destination, source, draggableId } = result;
         if (!destination) return;
         if (destination.droppableId === source.droppableId && destination.index === source.index) return;
 
-        // Only Admins can drag to Approve? Logic is in backend, but UI should restrict maybe.
-        // Actually drag drop is fine, the action will fail if not auth. But let's assume UI is sufficient for now.
-
         const newStatus = destination.droppableId as any;
 
-        // Optimistic
+        // Optimistic Update (Global List)
         const updated = reqs.map(r => r.id === draggableId ? { ...r, status: newStatus } : r);
         setReqs(updated);
 
@@ -153,6 +165,9 @@ export default function RequisitionBoard({ data, userRole }: { data: Requisition
             <div className="flex justify-between items-center bg-white p-4 rounded-lg border">
                 <h3 className="text-xl font-bold">Requisitions</h3>
                 <div className="flex items-center gap-2">
+                    <span className="text-sm text-muted-foreground mr-2">
+                        {reqs.length} items
+                    </span>
                     <ViewToggle view={view} onViewChange={setView} />
                     <Dialog open={creationOpen} onOpenChange={setCreationOpen}>
                         <DialogTrigger asChild>
@@ -270,7 +285,8 @@ export default function RequisitionBoard({ data, userRole }: { data: Requisition
                                 <Droppable droppableId={col.id}>
                                     {(provided) => (
                                         <div {...provided.droppableProps} ref={provided.innerRef} className="flex-1 space-y-3">
-                                            {reqs.filter(r => r.status === col.id).map((req, index) => (
+                                            {/* Note: In Kanban, strict pagination across all cols is weird, but we render 'paginatedReqs' filtered by status. */}
+                                            {paginatedReqs.filter(r => r.status === col.id).map((req, index) => (
                                                 <Draggable key={req.id} draggableId={req.id} index={index}>
                                                     {(provided) => (
                                                         <Card
@@ -325,7 +341,7 @@ export default function RequisitionBoard({ data, userRole }: { data: Requisition
                             </TableRow>
                         </TableHeader>
                         <TableBody>
-                            {reqs.map((req) => (
+                            {paginatedReqs.map((req) => (
                                 <TableRow key={req.id} onClick={() => { setSelectedReq(req); setDetailsOpen(true); }} className="cursor-pointer hover:bg-slate-50">
                                     <TableCell>{format(new Date(req.createdAt), "MMM d, yyyy")}</TableCell>
                                     <TableCell className="font-mono text-xs">{req.id.slice(0, 8)}</TableCell>
@@ -342,6 +358,29 @@ export default function RequisitionBoard({ data, userRole }: { data: Requisition
                             ))}
                         </TableBody>
                     </Table>
+                </div>
+            )}
+
+            {/* Pagination Controls */}
+            {totalPages > 1 && (
+                <div className="flex items-center justify-end gap-2 pt-2">
+                    <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setPage(p => Math.max(1, p - 1))}
+                        disabled={page === 1}
+                    >
+                        Previous
+                    </Button>
+                    <span className="text-sm font-medium">Page {page} of {totalPages}</span>
+                    <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+                        disabled={page === totalPages}
+                    >
+                        Next
+                    </Button>
                 </div>
             )}
 

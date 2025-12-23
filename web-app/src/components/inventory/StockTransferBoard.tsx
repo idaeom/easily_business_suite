@@ -12,6 +12,7 @@ import { createTransfer, receiveTransfer } from "@/actions/inventory";
 import { ArrowRightLeft, Truck, PackageOpen } from "lucide-react";
 import { Card, CardHeader, CardTitle, CardContent, CardFooter } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { IncomingTransfersSection } from "./IncomingTransfersSection";
 
 interface Transfer {
     id: string;
@@ -264,33 +265,12 @@ export function StockTransferBoard({ transfers, outlets, items, currentOutletId 
 
             {/* Incoming Transfers */}
             {incoming.length > 0 && (
-                <div className="space-y-2">
-                    <h4 className="text-sm font-medium text-orange-600 flex items-center"><Truck className="mr-2 h-4 w-4" /> Incoming Transfers</h4>
-                    <div className="grid gap-4 md:grid-cols-2">
-                        {incoming.map(t => (
-                            <Card key={t.id} className="border-orange-200 bg-orange-50/50">
-                                <CardHeader className="py-3 px-4 flex flex-row items-center justify-between space-y-0">
-                                    <div className="text-sm font-medium">From: {getOutletName(t.sourceOutletId)}</div>
-                                    <Badge variant="outline">{t.type}</Badge>
-                                </CardHeader>
-                                <CardContent className="py-2 px-4 text-sm">
-                                    <ul className="list-disc pl-4 space-y-1">
-                                        {t.items.map((i: any, idx: number) => (
-                                            <li key={idx}>{getItemName(i.itemId)} (Ordered: {i.quantity})</li>
-                                        ))}
-                                    </ul>
-                                    {t.notes && <p className="text-muted-foreground mt-2 italic">{t.notes}</p>}
-                                    {t.status === 'PARTIALLY_COMPLETED' && <Badge className="mt-2" variant="secondary">Partially Received</Badge>}
-                                </CardContent>
-                                <CardFooter className="py-3 px-4">
-                                    <Button size="sm" className="w-full" onClick={() => openReceiveDialog(t)}>
-                                        <PackageOpen className="mr-2 h-4 w-4" /> Receive Items
-                                    </Button>
-                                </CardFooter>
-                            </Card>
-                        ))}
-                    </div>
-                </div>
+                <IncomingTransfersSection
+                    transfers={incoming}
+                    getOutletName={getOutletName}
+                    getItemName={getItemName}
+                    onReceive={openReceiveDialog}
+                />
             )}
 
             {/* Outgoing History */}

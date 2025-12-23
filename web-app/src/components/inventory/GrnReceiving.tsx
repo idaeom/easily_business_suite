@@ -25,6 +25,10 @@ interface Requisition {
     items?: any[];
 }
 
+import { ViewToggle } from "@/components/ui/view-toggle"; // Added import
+import { format } from "date-fns"; // Added import
+import { ChevronLeft, ChevronRight, LayoutGrid, List } from "lucide-react";
+
 export default function GrnReceiving({ requests }: { requests: Requisition[] }) {
     const { toast } = useToast();
     // Filter only approved orders or partially received
@@ -33,6 +37,13 @@ export default function GrnReceiving({ requests }: { requests: Requisition[] }) 
         r.status === "DISBURSED" ||
         r.status === "PARTIALLY_RECEIVED"
     );
+
+    const [view, setView] = useState<"grid" | "list">("grid"); // Added View State
+    const [page, setPage] = useState(1); // Added Pagination State
+    const itemsPerPage = 9;
+
+    const totalPages = Math.ceil(pendingReceipt.length / itemsPerPage);
+    const paginatedItems = pendingReceipt.slice((page - 1) * itemsPerPage, page * itemsPerPage);
 
     const [selectedReq, setSelectedReq] = useState<Requisition | null>(null);
     const [receiveData, setReceiveData] = useState<{ itemId: string; name: string; ordered: number; received: number; condition: string }[]>([]);
@@ -76,36 +87,102 @@ export default function GrnReceiving({ requests }: { requests: Requisition[] }) 
 
     return (
         <div className="space-y-4">
-            <h3 className="text-xl font-bold flex items-center"><PackageCheck className="mr-2" /> Goods Receiving (GRN)</h3>
+            <div className="flex justify-between items-center">
+                <h3 className="text-xl font-bold flex items-center"><PackageCheck className="mr-2" /> Goods Receiving (GRN)</h3>
+                <div className="flex items-center gap-2">
+                    <span className="text-sm text-muted-foreground mr-2">{pendingReceipt.length} Orders</span>
+                    <ViewToggle view={view} onViewChange={setView} />
+                </div>
+            </div>
 
             {pendingReceipt.length === 0 && (
                 <div className="text-muted-foreground text-sm italic">No pending orders to receive.</div>
             )}
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {pendingReceipt.map(req => (
-                    <Card key={req.id}>
-                        <CardHeader className="pb-2">
-                            <CardTitle className="text-base flex justify-between">
-                                <span>{req.description}</span>
-                                <Badge variant={req.status === "PARTIALLY_RECEIVED" ? "secondary" : "outline"}>
-                                    {req.status === "PARTIALLY_RECEIVED" ? "Partial" : "Approved"}
-                                </Badge>
-                            </CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                            <p className="text-sm text-muted-foreground">PO #{req.id.slice(0, 8)}</p>
-                            <p className="text-sm">Items: {req.items?.length || 0}</p>
-                            <p className="font-bold mt-2">₦{parseFloat(req.totalEstimatedAmount).toLocaleString()}</p>
-                        </CardContent>
-                        <CardFooter>
-                            <Button className="w-full" onClick={() => openReceiveDialog(req)}>
-                                {req.status === "PARTIALLY_RECEIVED" ? "Receive More" : "Receive Goods"}
-                            </Button>
-                        </CardFooter>
-                    </Card>
-                ))}
-            </div>
+            {view === "grid" ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {paginatedItems.map(req => ( // Use paginatedItems
+                        <Card key={req.id}>
+                            <CardHeader className="pb-2">
+                                <CardTitle className="text-base flex justify-between">
+                                    <span>{req.description}</span>
+                                    <Badge variant={req.status === "PARTIALLY_RECEIVED" ? "secondary" : "outline"}>
+                                        {req.status === "PARTIALLY_RECEIVED" ? "Partial" : "Approved"}
+                                    </Badge>
+                                </CardTitle>
+                            </CardHeader>
+                            <CardContent>
+                                <p className="text-sm text-muted-foreground">PO #{req.id.slice(0, 8)}</p>
+                                <p className="text-sm">Items: {req.items?.length || 0}</p>
+                                <p className="font-bold mt-2">₦{parseFloat(req.totalEstimatedAmount).toLocaleString()}</p>
+                            </CardContent>
+                            <CardFooter>
+                                <Button className="w-full" onClick={() => openReceiveDialog(req)}>
+                                    {req.status === "PARTIALLY_RECEIVED" ? "Receive More" : "Receive Goods"}
+                                </Button>
+                            </CardFooter>
+                        </Card>
+                    ))}
+                </div>
+            ) : (
+                <div className="bg-white rounded-md border text-sm">
+                    <Table>
+                        <TableHeader>
+                            <TableRow>
+                                <TableHead>Date</TableHead>
+                                <TableHead>PO Ref</TableHead>
+                                <TableHead>Description</TableHead>
+                                <TableHead>Total Amount</TableHead>
+                                <TableHead>Status</TableHead>
+                                <TableHead>Action</TableHead>
+                            </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                            {paginatedItems.map(req => (
+                                <TableRow key={req.id}>
+                                    <TableCell>{format(new Date(req.createdAt), "MMM d, yyyy")}</TableCell>
+                                    <TableCell className="font-mono text-xs">{req.id.slice(0, 8)}</TableCell>
+                                    <TableCell className="font-medium">{req.description}</TableCell>
+                                    <TableCell className="font-bold">₦{parseFloat(req.totalEstimatedAmount).toLocaleString()}</TableCell>
+                                    <TableCell>
+                                        <Badge variant={req.status === "PARTIALLY_RECEIVED" ? "secondary" : "outline"}>
+                                            {req.status === "PARTIALLY_RECEIVED" ? "Partial" : "Approved"}
+                                        </Badge>
+                                    </TableCell>
+                                    <TableCell>
+                                        <Button size="sm" variant="secondary" onClick={() => openReceiveDialog(req)}>
+                                            Receive
+                                        </Button>
+                                    </TableCell>
+                                </TableRow>
+                            ))}
+                        </TableBody>
+                    </Table>
+                </div>
+            )}
+
+            {/* Pagination Controls */}
+            {totalPages > 1 && (
+                <div className="flex items-center justify-end gap-2 pt-2">
+                    <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setPage(p => Math.max(1, p - 1))}
+                        disabled={page === 1}
+                    >
+                        Previous
+                    </Button>
+                    <span className="text-sm font-medium">Page {page} of {totalPages}</span>
+                    <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+                        disabled={page === totalPages}
+                    >
+                        Next
+                    </Button>
+                </div>
+            )}
 
             <Dialog open={!!selectedReq} onOpenChange={(open) => !open && setSelectedReq(null)}>
                 <DialogContent className="max-w-3xl">
