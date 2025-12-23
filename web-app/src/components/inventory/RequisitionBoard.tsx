@@ -280,14 +280,14 @@ export default function RequisitionBoard({ data, userRole }: { data: Requisition
                             <div key={col.id} className="flex flex-col bg-muted/20 rounded-lg p-4 border h-full">
                                 <h4 className="font-semibold mb-4 text-sm uppercase text-muted-foreground flex justify-between">
                                     {col.title}
-                                    <Badge variant="secondary">{reqs.filter(r => r.status === col.id).length}</Badge>
+                                    <Badge variant="secondary">{paginatedReqs.filter(r => r.status === col.id).length}</Badge>
                                 </h4>
                                 <div className="flex-1 overflow-y-auto pr-2">
                                     <Droppable droppableId={col.id}>
                                         {(provided) => (
                                             <div {...provided.droppableProps} ref={provided.innerRef} className="space-y-3 min-h-[100px]">
-                                                {/* Kanban View: Show ALL items properly filtered, scrolling handled by container */}
-                                                {reqs.filter(r => r.status === col.id).map((req, index) => (
+                                                {/* Kanban View: Show PAGINATED items properly filtered */}
+                                                {paginatedReqs.filter(r => r.status === col.id).map((req, index) => (
                                                     <Draggable key={req.id} draggableId={req.id} index={index}>
                                                         {(provided) => (
                                                             <Card
@@ -363,8 +363,8 @@ export default function RequisitionBoard({ data, userRole }: { data: Requisition
                 </div>
             )}
 
-            {/* Pagination Controls - Only for List View */}
-            {view === "list" && totalPages > 1 && (
+            {/* Pagination Controls - Visible for BOTH views */}
+            {totalPages > 1 && (
                 <div className="flex items-center justify-end gap-2 pt-2">
                     <Button
                         variant="outline"

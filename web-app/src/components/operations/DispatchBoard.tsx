@@ -49,13 +49,11 @@ const COLUMNS = {
 export default function DispatchBoard({ dispatches, initialHaulageProviders = [] }: { dispatches: any[], initialHaulageProviders?: any[] }) {
     const { toast } = useToast();
     const [view, setView] = useState<"grid" | "list">("grid");
-    const [columns, setColumns] = useState<Record<string, any[]>>(() => {
-        const cols: Record<string, any[]> = { PENDING: [], DISPATCHED: [], PARTIALLY_DELIVERED: [], DELIVERED: [], CANCELLED: [] };
-        dispatches.forEach(d => {
-            if (cols[d.status]) cols[d.status].push(d);
-        });
-        return cols;
-    });
+    const [page, setPage] = useState(1);
+    const itemsPerPage = 9;
+
+    const totalPages = Math.ceil(dispatches.length / itemsPerPage);
+    const paginatedDispatches = dispatches.slice((page - 1) * itemsPerPage, page * itemsPerPage);
 
     const [isAssignDialogOpen, setIsAssignDialogOpen] = useState(false);
     const [isDeliveryDialogOpen, setIsDeliveryDialogOpen] = useState(false);
@@ -64,10 +62,14 @@ export default function DispatchBoard({ dispatches, initialHaulageProviders = []
         haulageId: "", driverName: "", vehicleNumber: "", notes: ""
     });
 
+    const getDispatchesByStatus = (status: string) => {
+        return paginatedDispatches.filter(d => d.status === status);
+    };
+
     const onDragEnd = async (result: any) => {
         const { source, destination, draggableId } = result;
         if (!destination) return;
-        if (source.droppableId === destination.droppableId) return; // Reordering not implemented here
+        if (source.droppableId === destination.droppableId) return;
 
         // Moving to DISPATCHED requires Modal
         if (destination.droppableId === "DISPATCHED" && source.droppableId === "PENDING") {
@@ -78,7 +80,7 @@ export default function DispatchBoard({ dispatches, initialHaulageProviders = []
 
         // Moving to DELIVERED requires Modal (POD)
         if (destination.droppableId === "DELIVERED" && source.droppableId !== "DELIVERED") {
-            const dispatch = columns[source.droppableId].find((d: any) => d.id === draggableId);
+            const dispatch = dispatches.find(d => d.id === draggableId); // Find in full list
 
             // Workflow Check: Delivery vs Pickup
             if (dispatch?.deliveryMethod === 'DELIVERY' && !dispatch.haulageId) {
@@ -91,28 +93,24 @@ export default function DispatchBoard({ dispatches, initialHaulageProviders = []
             return;
         }
 
-        // Optimistic Update for other moves
-        const sourceList = Array.from(columns[source.droppableId]);
-        const destList = Array.from(columns[destination.droppableId]);
-        const [moved] = sourceList.splice(source.index, 1);
-        moved.status = destination.droppableId;
-        destList.splice(destination.index, 0, moved);
-
-        setColumns({
-            ...columns,
-            [source.droppableId]: sourceList,
-            [destination.droppableId]: destList
-        });
+        // For other moves, we just optimistic update the SERVER, but here we can't easily optimistic update "paginatedDispatches" without complex state.
+        // So we will rely on toast and server revalidation/reload.
+        // Or we can assume 'updateDispatchStatus' will trigger a reload if we were using server actions properly with revalidatePath.
+        // Given 'window.location.reload()' usage elsewhere, let's assume we might need to refresh or just accept the snap-back if we don't handle local state.
+        // To be safe, let's just do the API call.
 
         try {
             await updateDispatchStatus(draggableId, destination.droppableId as any);
-            toast({ title: "Status Updated", description: moved.sale?.customerName });
+            toast({ title: "Status Updated" });
+            // Brute force reload to reflect changes in pagination/list
+            window.location.reload();
         } catch (e) {
             toast({ title: "Error", description: "Failed to update status", variant: "destructive" });
         }
     };
 
     const handleAssignHaulage = async () => {
+        // ... (keep existing)
         if (!assignData.haulageId || !assignData.driverName) {
             toast({ title: "Error", description: "Provider and Driver are required", variant: "destructive" });
             return;
@@ -125,7 +123,7 @@ export default function DispatchBoard({ dispatches, initialHaulageProviders = []
                 ...assignData
             });
 
-            window.location.reload(); // Simple brute force for now to fetch new state
+            window.location.reload();
 
             toast({ title: "Dispatched", description: "Haulage Assigned Successfully" });
             setIsAssignDialogOpen(false);
@@ -138,7 +136,10 @@ export default function DispatchBoard({ dispatches, initialHaulageProviders = []
         <div className="h-full flex flex-col space-y-4">
             <div className="flex justify-between items-center">
                 <h2 className="text-xl font-bold">Dispatch Operations</h2>
-                <ViewToggle view={view} onViewChange={setView} />
+                <div className="flex items-center gap-2">
+                    <span className="text-sm text-muted-foreground mr-2">{dispatches.length} items</span>
+                    <ViewToggle view={view} onViewChange={setView} />
+                </div>
             </div>
 
             {view === "grid" ? (
@@ -149,7 +150,7 @@ export default function DispatchBoard({ dispatches, initialHaulageProviders = []
                                 <h3 className="font-semibold text-sm mb-3 flex justify-between items-center text-slate-700">
                                     {title}
                                     <Badge variant="secondary" className="text-xs">
-                                        {columns[status]?.length || 0}
+                                        {getDispatchesByStatus(status).length}
                                     </Badge>
                                 </h3>
                                 <Droppable droppableId={status}>
@@ -159,7 +160,7 @@ export default function DispatchBoard({ dispatches, initialHaulageProviders = []
                                             ref={provided.innerRef}
                                             className="flex-1 space-y-3 min-h-[200px]"
                                         >
-                                            {columns[status]?.map((item, index) => (
+                                            {getDispatchesByStatus(status).map((item, index) => (
                                                 <Draggable key={item.id} draggableId={item.id} index={index}>
                                                     {(provided) => (
                                                         <Card
@@ -231,7 +232,7 @@ export default function DispatchBoard({ dispatches, initialHaulageProviders = []
                             </TableRow>
                         </TableHeader>
                         <TableBody>
-                            {dispatches.map(item => (
+                            {paginatedDispatches.map(item => (
                                 <TableRow key={item.id} onClick={() => {
                                     setSelectedDispatchId(item.id);
                                     if (item.deliveryMethod === 'DELIVERY' && !item.haulageId) {
@@ -287,6 +288,29 @@ export default function DispatchBoard({ dispatches, initialHaulageProviders = []
                             ))}
                         </TableBody>
                     </Table>
+                </div>
+            )}
+
+            {/* Pagination Controls */}
+            {totalPages > 1 && (
+                <div className="flex items-center justify-end gap-2 pt-2">
+                    <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setPage(p => Math.max(1, p - 1))}
+                        disabled={page === 1}
+                    >
+                        Previous
+                    </Button>
+                    <span className="text-sm font-medium">Page {page} of {totalPages}</span>
+                    <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+                        disabled={page === totalPages}
+                    >
+                        Next
+                    </Button>
                 </div>
             )}
 
