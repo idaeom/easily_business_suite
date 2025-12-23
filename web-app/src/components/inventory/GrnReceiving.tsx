@@ -14,6 +14,7 @@ import { createGrn } from "@/actions/inventory";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { PackageCheck } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 interface Requisition {
     id: string;
@@ -38,12 +39,34 @@ export default function GrnReceiving({ requests }: { requests: Requisition[] }) 
         r.status === "PARTIALLY_RECEIVED"
     );
 
-    const [view, setView] = useState<"grid" | "list">("grid"); // Added View State
-    const [page, setPage] = useState(1); // Added Pagination State
+    const [view, setView] = useState<"grid" | "list">("grid");
+    const [page, setPage] = useState(1);
+    const [searchQuery, setSearchQuery] = useState("");
+    const [statusFilter, setStatusFilter] = useState<string>("ALL");
     const itemsPerPage = 9;
 
-    const totalPages = Math.ceil(pendingReceipt.length / itemsPerPage);
-    const paginatedItems = pendingReceipt.slice((page - 1) * itemsPerPage, page * itemsPerPage);
+    // Filter Logic
+    const filteredRequests = pendingReceipt.filter(r => {
+        const matchesSearch =
+            (r.description && r.description.toLowerCase().includes(searchQuery.toLowerCase())) ||
+            (r.id.toLowerCase().includes(searchQuery.toLowerCase()));
+
+        const matchesStatus = statusFilter === "ALL" || r.status === statusFilter;
+
+        return matchesSearch && matchesStatus;
+    });
+
+    const totalPages = Math.ceil(filteredRequests.length / itemsPerPage);
+    const paginatedItems = filteredRequests.slice((page - 1) * itemsPerPage, page * itemsPerPage);
+
+    // Reset page logic
+    React.useEffect(() => {
+        setPage(1);
+    }, [searchQuery, statusFilter]);
+
+    React.useEffect(() => {
+        if (page > totalPages && totalPages > 0) setPage(1);
+    }, [filteredRequests.length, totalPages, page]);
 
     const [selectedReq, setSelectedReq] = useState<Requisition | null>(null);
     const [receiveData, setReceiveData] = useState<{ itemId: string; name: string; ordered: number; received: number; condition: string }[]>([]);
@@ -90,7 +113,25 @@ export default function GrnReceiving({ requests }: { requests: Requisition[] }) 
             <div className="flex justify-between items-center">
                 <h3 className="text-xl font-bold flex items-center"><PackageCheck className="mr-2" /> Goods Receiving (GRN)</h3>
                 <div className="flex items-center gap-2">
-                    <span className="text-sm text-muted-foreground mr-2">{pendingReceipt.length} Orders</span>
+                    <div className="flex items-center gap-2 mr-2">
+                        <Input
+                            placeholder="Search Supplier, PO..."
+                            className="h-8 w-[200px]"
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
+                        />
+                        <Select value={statusFilter} onValueChange={setStatusFilter}>
+                            <SelectTrigger className="h-8 w-[130px]">
+                                <SelectValue placeholder="Status" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="ALL">All Active</SelectItem>
+                                <SelectItem value="APPROVED_FOR_PAYMENT">Approved</SelectItem>
+                                <SelectItem value="PARTIALLY_RECEIVED">Partially</SelectItem>
+                            </SelectContent>
+                        </Select>
+                    </div>
+                    <span className="text-sm text-muted-foreground mr-2">{filteredRequests.length} Orders</span>
                     <ViewToggle view={view} onViewChange={setView} />
                 </div>
             </div>
@@ -101,7 +142,7 @@ export default function GrnReceiving({ requests }: { requests: Requisition[] }) 
 
             {view === "grid" ? (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                    {paginatedItems.map(req => ( // Use paginatedItems
+                    {paginatedItems.map(req => (
                         <Card key={req.id}>
                             <CardHeader className="pb-2">
                                 <CardTitle className="text-base flex justify-between">

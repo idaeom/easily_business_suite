@@ -118,18 +118,38 @@ export default function RequisitionBoard({ data, userRole }: { data: Requisition
         }
     };
 
+    // Search and Filter State
+    const [searchQuery, setSearchQuery] = useState("");
+    const [statusFilter, setStatusFilter] = useState<string>("ALL");
+
+    // Filter Logic
+    const filteredReqs = reqs.filter(req => {
+        const matchesSearch =
+            (req.description && req.description.toLowerCase().includes(searchQuery.toLowerCase())) ||
+            (req.requesterName && req.requesterName.toLowerCase().includes(searchQuery.toLowerCase())) ||
+            req.id.toLowerCase().includes(searchQuery.toLowerCase());
+
+        const matchesStatus = statusFilter === "ALL" || req.status === statusFilter;
+
+        return matchesSearch && matchesStatus;
+    });
+
     const [page, setPage] = useState(1);
     const itemsPerPage = view === "grid" ? 3 : 9;
 
-    const totalPages = Math.ceil(reqs.length / itemsPerPage);
-    const paginatedReqs = reqs.slice((page - 1) * itemsPerPage, page * itemsPerPage);
+    const totalPages = Math.ceil(filteredReqs.length / itemsPerPage);
+    const paginatedReqs = filteredReqs.slice((page - 1) * itemsPerPage, page * itemsPerPage);
 
-    // Reset page if out of bounds
+    // Reset page if out of bounds or filter changes
+    useEffect(() => {
+        setPage(1);
+    }, [searchQuery, statusFilter]);
+
     useEffect(() => {
         if (page > totalPages && totalPages > 0) {
             setPage(1);
         }
-    }, [reqs.length, totalPages, page]);
+    }, [filteredReqs.length, totalPages, page]);
 
     // ... (keep existing creation handlers)
 
@@ -137,6 +157,10 @@ export default function RequisitionBoard({ data, userRole }: { data: Requisition
         const { destination, source, draggableId } = result;
         if (!destination) return;
         if (destination.droppableId === source.droppableId && destination.index === source.index) return;
+
+        // If filtering by status, dragging might be weird if moving out of current filter view, but let's allow it.
+        // Actually if strict status filter is ON, dragging to another status column might hide it immediately. 
+        // That's acceptable for now.
 
         const newStatus = destination.droppableId as any;
 
@@ -165,8 +189,29 @@ export default function RequisitionBoard({ data, userRole }: { data: Requisition
             <div className="flex justify-between items-center bg-white p-4 rounded-lg border">
                 <h3 className="text-xl font-bold">Requisitions</h3>
                 <div className="flex items-center gap-2">
+                    {/* Search & Filter */}
+                    <div className="flex items-center gap-2 mr-2">
+                        <Input
+                            placeholder="Search description, requester..."
+                            className="h-8 w-[200px]"
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
+                        />
+                        <Select value={statusFilter} onValueChange={setStatusFilter}>
+                            <SelectTrigger className="h-8 w-[140px]">
+                                <SelectValue placeholder="Status" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="ALL">All Statuses</SelectItem>
+                                <SelectItem value="PENDING_APPROVAL">Pending</SelectItem>
+                                <SelectItem value="APPROVED_FOR_PAYMENT">Approved</SelectItem>
+                                <SelectItem value="GOODS_RECEIVED">Received</SelectItem>
+                            </SelectContent>
+                        </Select>
+                    </div>
+
                     <span className="text-sm text-muted-foreground mr-2">
-                        {reqs.length} items
+                        {filteredReqs.length} items
                     </span>
                     <ViewToggle view={view} onViewChange={setView} />
                     <Dialog open={creationOpen} onOpenChange={setCreationOpen}>

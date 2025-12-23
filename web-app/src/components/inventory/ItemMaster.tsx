@@ -286,10 +286,21 @@ export function ItemMaster({ items, categories = [], outlets = [], activeOutletI
 function ItemList({ items, onEdit }: { items: Item[]; onEdit: (item: Item) => void }) {
     const [viewMode, setViewMode] = useState<"list" | "card">("list");
     const [page, setPage] = useState(1);
+    const [searchQuery, setSearchQuery] = useState("");
     const itemsPerPage = 8;
 
-    const totalPages = Math.ceil(items.length / itemsPerPage);
-    const paginatedItems = items.slice((page - 1) * itemsPerPage, page * itemsPerPage);
+    const filteredItems = items.filter(item =>
+        item.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (item.sku && item.sku.toLowerCase().includes(searchQuery.toLowerCase()))
+    );
+
+    const totalPages = Math.ceil(filteredItems.length / itemsPerPage);
+    const paginatedItems = filteredItems.slice((page - 1) * itemsPerPage, page * itemsPerPage);
+
+    // Reset page when search changes
+    React.useEffect(() => {
+        setPage(1);
+    }, [searchQuery]);
 
     if (page > totalPages && totalPages > 0) {
         setPage(1);
@@ -301,10 +312,18 @@ function ItemList({ items, onEdit }: { items: Item[]; onEdit: (item: Item) => vo
 
     return (
         <div className="space-y-4">
-            <div className="flex justify-between items-center bg-slate-50 p-2 rounded-md border">
-                <span className="text-sm font-medium text-muted-foreground ml-2">
-                    Showing {paginatedItems.length} of {items.length} items
-                </span>
+            <div className="flex justify-between items-center bg-slate-50 p-2 rounded-md border gap-4">
+                <div className="flex items-center gap-2 flex-1">
+                    <Input
+                        placeholder="Search items by name or SKU..."
+                        className="max-w-[300px] h-8 bg-white"
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                    />
+                    <span className="text-sm font-medium text-muted-foreground ml-2 whitespace-nowrap">
+                        Showing {paginatedItems.length} of {filteredItems.length} items
+                    </span>
+                </div>
                 <div className="flex bg-white rounded border">
                     <Button
                         variant="ghost"

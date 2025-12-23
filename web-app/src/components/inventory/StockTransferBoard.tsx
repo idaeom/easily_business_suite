@@ -130,17 +130,56 @@ export function StockTransferBoard({ transfers, outlets, items, currentOutletId 
     };
 
     // Filter Transfers
-    // Show 'PARTIALLY_COMPLETED' as well
-    const incoming = transfers.filter(t => t.destinationOutletId === currentOutletId && t.status !== "COMPLETED");
-    const outgoing = transfers.filter(t => t.sourceOutletId === currentOutletId);
+    const [searchQuery, setSearchQuery] = useState("");
+    const [statusFilter, setStatusFilter] = useState<string>("ALL");
 
     const getOutletName = (id: string) => outlets.find(o => o.id === id)?.name || "Unknown";
     const getItemName = (id: string) => items.find(i => i.id === id)?.name || id;
 
+    const filterTransfer = (t: Transfer) => {
+        const matchesSearch =
+            getOutletName(t.sourceOutletId).toLowerCase().includes(searchQuery.toLowerCase()) ||
+            getOutletName(t.destinationOutletId).toLowerCase().includes(searchQuery.toLowerCase()) ||
+            t.id.toLowerCase().includes(searchQuery.toLowerCase());
+        const matchesStatus = statusFilter === "ALL" || t.status === statusFilter;
+        return matchesSearch && matchesStatus;
+    };
+
+    // Derived lists
+    const incoming = transfers
+        .filter(t => t.destinationOutletId === currentOutletId && t.status !== "COMPLETED")
+        .filter(filterTransfer);
+
+    const outgoing = transfers
+        .filter(t => t.sourceOutletId === currentOutletId)
+        .filter(filterTransfer);
+
+
     return (
         <div className="space-y-6">
             <div className="flex justify-between items-center">
-                <h3 className="text-lg font-semibold flex items-center"><ArrowRightLeft className="mr-2 h-5 w-5" /> Stock Transfers</h3>
+                <div className="flex items-center gap-4">
+                    <h3 className="text-lg font-semibold flex items-center"><ArrowRightLeft className="mr-2 h-5 w-5" /> Stock Transfers</h3>
+                    <div className="flex items-center gap-2">
+                        <Input
+                            placeholder="Search Outlet, ID..."
+                            className="h-8 w-[200px]"
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
+                        />
+                        <Select value={statusFilter} onValueChange={setStatusFilter}>
+                            <SelectTrigger className="h-8 w-[130px]">
+                                <SelectValue placeholder="Status" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="ALL">All Statuses</SelectItem>
+                                <SelectItem value="PENDING">Pending</SelectItem>
+                                <SelectItem value="IN_TRANSIT">In Transit</SelectItem>
+                                <SelectItem value="COMPLETED">Completed</SelectItem>
+                            </SelectContent>
+                        </Select>
+                    </div>
+                </div>
                 <Dialog open={open} onOpenChange={setOpen}>
                     <DialogTrigger asChild>
                         <Button>New Transfer</Button>
