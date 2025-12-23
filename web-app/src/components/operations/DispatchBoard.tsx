@@ -50,7 +50,7 @@ export default function DispatchBoard({ dispatches, initialHaulageProviders = []
     const { toast } = useToast();
     const [view, setView] = useState<"grid" | "list">("grid");
     const [page, setPage] = useState(1);
-    const itemsPerPage = 9;
+    const itemsPerPage = view === "grid" ? 3 : 9;
 
     const totalPages = Math.ceil(dispatches.length / itemsPerPage);
     const paginatedDispatches = dispatches.slice((page - 1) * itemsPerPage, page * itemsPerPage);
