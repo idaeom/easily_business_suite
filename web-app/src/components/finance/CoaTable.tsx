@@ -1,10 +1,11 @@
 
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
     Table, TableBody, TableCell, TableHead, TableHeader, TableRow
 } from "@/components/ui/table";
+import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -24,6 +25,8 @@ type Account = {
 export function CoaTable({ accounts }: { accounts: Account[] }) {
     const [search, setSearch] = useState("");
     const [typeFilter, setTypeFilter] = useState("ALL");
+    const [page, setPage] = useState(1);
+    const itemsPerPage = 10;
 
     const filtered = accounts.filter(acc => {
         const matchesSearch =
@@ -32,6 +35,14 @@ export function CoaTable({ accounts }: { accounts: Account[] }) {
         const matchesType = typeFilter === "ALL" || acc.type === typeFilter;
         return matchesSearch && matchesType;
     });
+
+    const totalPages = Math.ceil(filtered.length / itemsPerPage);
+    const paginatedAccounts = filtered.slice((page - 1) * itemsPerPage, page * itemsPerPage);
+
+    // Reset page on filter change
+    useEffect(() => {
+        setPage(1);
+    }, [search, typeFilter]);
 
     // Helper for formatting currency
     const formatCurrency = (amount: string, currency: string) => {
@@ -64,19 +75,24 @@ export function CoaTable({ accounts }: { accounts: Account[] }) {
                         onChange={(e) => setSearch(e.target.value)}
                     />
                 </div>
-                <Select value={typeFilter} onValueChange={setTypeFilter}>
-                    <SelectTrigger className="w-[180px]">
-                        <SelectValue placeholder="Filter Type" />
-                    </SelectTrigger>
-                    <SelectContent>
-                        <SelectItem value="ALL">All Accounts</SelectItem>
-                        <SelectItem value="ASSET">Assets</SelectItem>
-                        <SelectItem value="LIABILITY">Liabilities</SelectItem>
-                        <SelectItem value="EQUITY">Equity</SelectItem>
-                        <SelectItem value="INCOME">Income</SelectItem>
-                        <SelectItem value="EXPENSE">Expenses</SelectItem>
-                    </SelectContent>
-                </Select>
+                <div className="flex items-center gap-2">
+                    <Select value={typeFilter} onValueChange={setTypeFilter}>
+                        <SelectTrigger className="w-[180px]">
+                            <SelectValue placeholder="Filter Type" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="ALL">All Accounts</SelectItem>
+                            <SelectItem value="ASSET">Assets</SelectItem>
+                            <SelectItem value="LIABILITY">Liabilities</SelectItem>
+                            <SelectItem value="EQUITY">Equity</SelectItem>
+                            <SelectItem value="INCOME">Income</SelectItem>
+                            <SelectItem value="EXPENSE">Expenses</SelectItem>
+                        </SelectContent>
+                    </Select>
+                    <div className="text-sm text-muted-foreground whitespace-nowrap">
+                        {filtered.length} found
+                    </div>
+                </div>
             </div>
 
             <Card>
@@ -101,14 +117,14 @@ export function CoaTable({ accounts }: { accounts: Account[] }) {
                             </TableRow>
                         </TableHeader>
                         <TableBody>
-                            {filtered.length === 0 ? (
+                            {paginatedAccounts.length === 0 ? (
                                 <TableRow>
                                     <TableCell colSpan={5} className="h-24 text-center">
                                         No accounts found.
                                     </TableCell>
                                 </TableRow>
                             ) : (
-                                filtered.map((acc) => (
+                                paginatedAccounts.map((acc) => (
                                     <TableRow key={acc.id} className="hover:bg-slate-50/50">
                                         <TableCell className="font-mono font-medium text-slate-700">
                                             {acc.code}
@@ -143,6 +159,29 @@ export function CoaTable({ accounts }: { accounts: Account[] }) {
                     </Table>
                 </CardContent>
             </Card>
+
+            {/* Pagination Controls */}
+            {totalPages > 1 && (
+                <div className="flex items-center justify-end gap-2">
+                    <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setPage(p => Math.max(1, p - 1))}
+                        disabled={page === 1}
+                    >
+                        Previous
+                    </Button>
+                    <span className="text-sm font-medium">Page {page} of {totalPages}</span>
+                    <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+                        disabled={page === totalPages}
+                    >
+                        Next
+                    </Button>
+                </div>
+            )}
         </div>
     );
 }
