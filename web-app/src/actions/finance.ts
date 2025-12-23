@@ -35,6 +35,10 @@ export async function getBusinessAccounts() {
 export async function createBusinessAccount(data: BusinessAccountInput) {
     const user = await getAuthenticatedUser();
     if (!user) throw new Error("Unauthorized");
+
+    const { verifyPermission } = await import("@/lib/auth");
+    await verifyPermission("MANAGE_ACCOUNTS");
+
     const db = await getDb();
 
     // 0. Enforce Unique GL Account Logic
@@ -125,6 +129,10 @@ export async function createBusinessAccount(data: BusinessAccountInput) {
 export async function updateBusinessAccount(id: string, data: Partial<BusinessAccountInput>) {
     const user = await getAuthenticatedUser();
     if (!user) throw new Error("Unauthorized");
+
+    const { verifyPermission } = await import("@/lib/auth");
+    await verifyPermission("MANAGE_ACCOUNTS");
+
     const db = await getDb();
 
     await db.update(businessAccounts).set({
@@ -266,6 +274,11 @@ export async function simulateInflowAction(accountId: string, amount: number) {
     const user = await getAuthenticatedUser();
     // Only Admin
     if (!user || user.role !== "ADMIN") throw new Error("Unauthorized");
+
+    // Additional check for robust permissions
+    const { verifyPermission } = await import("@/lib/auth");
+    await verifyPermission("MANAGE_ACCOUNTS");
+
     const db = await getDb();
 
     // 1. Debit Asset (Increase)
@@ -310,6 +323,10 @@ export async function simulateInflowAction(accountId: string, amount: number) {
 export async function createDedicatedAccountAction(provider: string, accountId: string) {
     const user = await getAuthenticatedUser();
     if (!user) throw new Error("Unauthorized");
+
+    const { verifyPermission } = await import("@/lib/auth");
+    await verifyPermission("MANAGE_ACCOUNTS");
+
     const db = await getDb();
 
     console.log(`Simulating creating dedicated account for ${accountId} on ${provider}`);
@@ -340,6 +357,10 @@ export type JournalEntryInput = {
 export async function createJournalEntry(data: JournalEntryInput) {
     const user = await getAuthenticatedUser();
     if (!user) throw new Error("Unauthorized");
+
+    const { verifyPermission } = await import("@/lib/auth");
+    await verifyPermission("MANAGE_ACCOUNTS");
+
     const db = await getDb();
 
     // 1. Validate Balance

@@ -12,27 +12,42 @@ async function main() {
     const financials = await getFinancialStatements();
 
     console.log("--- Balance Sheet ---");
-    console.log(`Total Assets: ₦${financials.balanceSheet.totalAssets.toLocaleString()}`);
-    console.log(`Total Liabilities: ₦${financials.balanceSheet.totalLiabilities.toLocaleString()}`);
+    console.log(`Total Assets: ₦${financials.balanceSheet.assets.total.toLocaleString()}`);
+    financials.balanceSheet.assets.current.forEach(a => console.log(`   ${a.name}: ${a.amount.toLocaleString()}`));
+    financials.balanceSheet.assets.fixed.forEach(a => console.log(`   ${a.name}: ${a.amount.toLocaleString()}`));
+
+    console.log(`Total Liabilities: ₦${financials.balanceSheet.liabilities.total.toLocaleString()}`);
+    financials.balanceSheet.liabilities.current.forEach(l => console.log(`   ${l.name}: ${l.amount.toLocaleString()}`));
+    financials.balanceSheet.liabilities.longTerm.forEach(l => console.log(`   ${l.name}: ${l.amount.toLocaleString()}`));
+
     console.log(`Total Equity: ₦${financials.balanceSheet.totalEquity.toLocaleString()}`);
+    financials.balanceSheet.equity.forEach(e => console.log(`   ${e.name}: ${e.amount.toLocaleString()}`));
 
     console.log("--- Profit & Loss ---");
-    console.log(`Total Income: ₦${financials.profitAndLoss.totalIncome.toLocaleString()}`);
-    console.log(`Total Expenses: ₦${financials.profitAndLoss.totalExpenses.toLocaleString()}`);
+    console.log(`Total Revenue: ₦${financials.profitAndLoss.totalRevenue.toLocaleString()}`);
+    console.log(`Total COGS: ₦${financials.profitAndLoss.totalCogs.toLocaleString()}`);
+    console.log(`Gross Profit: ₦${financials.profitAndLoss.grossProfit.toLocaleString()}`);
+    console.log(`Total OpEx: ₦${financials.profitAndLoss.totalOperatingExpenses.toLocaleString()}`);
     console.log(`Net Profit: ₦${financials.profitAndLoss.netProfit.toLocaleString()}`);
 
     // Check Accounting Equation: Assets = Liabilities + Equity + Net Profit (if not closed)
-    const totalEquityAndProfit = financials.balanceSheet.totalEquity + financials.profitAndLoss.netProfit;
-    const diff = financials.balanceSheet.totalAssets - (financials.balanceSheet.totalLiabilities + totalEquityAndProfit);
+    // Note: Our logic ADDS Net Profit to Equity in the return object already.
+    // So distinct Equity usually includes Retained Earnings?
+    // In reports.ts we did: balanceSheet.totalEquity += profitAndLoss.netProfit;
+    // So Assets should equal Liabilities + TotalEquity directly.
+
+    // const totalEquityAndProfit = financials.balanceSheet.totalEquity + financials.profitAndLoss.netProfit;
+    // Actually, check reports.ts again. Yes, we added it.
+
+    const diff = financials.balanceSheet.assets.total - (financials.balanceSheet.liabilities.total + financials.balanceSheet.totalEquity);
 
     if (Math.abs(diff) < 0.01) {
-        console.log("✅ SUCCESS: Accounting Equation Balanced (Assets = Liabilities + Equity + Earnings)");
+        console.log("✅ SUCCESS: Accounting Equation Balanced (Assets = Liabilities + Equity)");
     } else {
         console.error(`❌ FAILURE: Accounting Equation Imbalanced by ₦${diff}`);
-        console.log("Debug: Assets", financials.balanceSheet.totalAssets);
-        console.log("Debug: Liabilities", financials.balanceSheet.totalLiabilities);
+        console.log("Debug: Assets", financials.balanceSheet.assets.total);
+        console.log("Debug: Liabilities", financials.balanceSheet.liabilities.total);
         console.log("Debug: Equity", financials.balanceSheet.totalEquity);
-        console.log("Debug: Net Profit", financials.profitAndLoss.netProfit);
     }
 
     // 2. Verify Payroll Reports

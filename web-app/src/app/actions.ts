@@ -80,9 +80,11 @@ export async function createTask(data: {
 }) {
     const user = await getAuthenticatedUser();
 
-    const dueDate = data.dueDate ? new Date(data.dueDate) : undefined;
+    // Check Permission
+    const { verifyPermission } = await import("@/lib/auth");
+    await verifyPermission("TASK_CREATE");
 
-    // TaskService is now using Drizzle
+    const dueDate = data.dueDate ? new Date(data.dueDate) : undefined;
     const { TaskService } = await import("@/lib/tasks");
     const task = await TaskService.createTask({
         title: data.title,
@@ -699,14 +701,24 @@ export async function updateTaskStatus(taskId: string, statusOrStageId: string) 
 
         // RBAC Logic
         if (newStatus === "IN_PROGRESS" || newStatus === "DONE") {
-            await TaskService.checkPermission(taskId, user.id, ["ASSIGNEE", "ASSIGNOR"]);
+            const { verifyPermission } = await import("@/lib/auth");
+            // Either Assignee/Assignor (Logic in TaskService) OR has TASK_EDIT permission
+            try {
+                await verifyPermission("TASK_EDIT");
+            } catch {
+                await TaskService.checkPermission(taskId, user.id, ["ASSIGNEE", "ASSIGNOR"]);
+            }
         } else if (newStatus === "CERTIFIED") {
             await TaskService.checkPermission(taskId, user.id, ["CERTIFIER"]);
         } else if (newStatus === "APPROVED") {
             await TaskService.checkPermission(taskId, user.id, ["APPROVER"]);
         } else {
-            // Fallback for other statuses
-            await TaskService.checkPermission(taskId, user.id, ["ASSIGNEE", "ASSIGNOR"]);
+            const { verifyPermission } = await import("@/lib/auth");
+            try {
+                await verifyPermission("TASK_EDIT");
+            } catch {
+                await TaskService.checkPermission(taskId, user.id, ["ASSIGNEE", "ASSIGNOR"]);
+            }
         }
 
         if (task.status === statusOrStageId) return;
@@ -780,8 +792,10 @@ export async function getTaskStages() {
 }
 
 export async function createTaskStage(name: string, color: string) {
-    const user = await getAuthenticatedUser();
-    if (user.role !== "ADMIN") throw new Error("Unauthorized");
+    const { verifyPermission } = await import("@/lib/auth");
+    await verifyPermission("TASK_STAGE_MANAGE");
+
+    // const user = await getAuthenticatedUser(); // Verify permission calls getAuthenticatedUser internaly
 
     const { taskStages } = await import("@/db/schema");
     const db = await getDb();
@@ -1308,11 +1322,8 @@ export async function changePassword(oldPassword: string, newPassword: string) {
 
 export async function createOrUpdateEmployeeProfile(formData: FormData) {
     const user = await getAuthenticatedUser();
-
-    // Check permissions
-    // if (user.role !== "ADMIN" && !(user.permissions as string[])?.includes("HR_MANAGE")) {
-    //    throw new Error("Unauthorized");
-    // }
+    const { verifyPermission } = await import("@/lib/auth");
+    await verifyPermission("MANAGE_EMPLOYEES");
 
     const { HrService } = await import("@/lib/hr");
 
@@ -1335,9 +1346,8 @@ export async function createOrUpdateEmployeeProfile(formData: FormData) {
 
 export async function createPayrollRun(formData: FormData) {
     const user = await getAuthenticatedUser();
-    // if (user.role !== "ADMIN" && !(user.permissions as string[])?.includes("HR_PAYROLL")) {
-    //    throw new Error("Unauthorized");
-    // }
+    const { verifyPermission } = await import("@/lib/auth");
+    await verifyPermission("PAYROLL_CREATE");
 
     const month = Number(formData.get("month"));
     const year = Number(formData.get("year"));
@@ -1351,9 +1361,8 @@ export async function createPayrollRun(formData: FormData) {
 
 export async function approvePayrollRun(runId: string) {
     const user = await getAuthenticatedUser();
-    // if (user.role !== "ADMIN" && !(user.permissions as string[])?.includes("HR_APPROVE")) {
-    //    throw new Error("Unauthorized");
-    // }
+    const { verifyPermission } = await import("@/lib/auth");
+    await verifyPermission("PAYROLL_APPROVE");
 
     const { PayrollService } = await import("@/lib/payroll");
     await PayrollService.approvePayrollRun(runId, user.id);
@@ -1493,8 +1502,8 @@ export async function getAllAppraisals() {
 
 // PAYROLL ADJUSTMENT
 export async function updatePayrollItem(itemId: string, updates: Partial<PayrollInput>) {
-    const session = await auth();
-    if (!session || !session.user) throw new Error("Unauthorized");
+    const { verifyPermission } = await import("@/lib/auth");
+    await verifyPermission("PAYROLL_CREATE"); // Editing items is part of creation process
 
     const db = await getDb();
 

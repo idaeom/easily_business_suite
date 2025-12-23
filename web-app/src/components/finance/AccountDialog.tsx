@@ -24,6 +24,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Loader2, Plus, Pencil } from "lucide-react";
 import { createBusinessAccount, updateBusinessAccount, BusinessAccountInput } from "@/actions/finance";
 import { BusinessAccount } from "@/db/schema";
+import { Protect } from "@/components/auth/Protect";
 
 interface AccountDialogProps {
     account?: BusinessAccount; // If present, Edit mode
@@ -102,16 +103,18 @@ export function AccountDialog({ account, glAccounts }: AccountDialogProps) {
     return (
         <Dialog open={open} onOpenChange={setOpen}>
             <DialogTrigger asChild>
-                {account ? (
-                    <Button variant="ghost" size="icon">
-                        <Pencil className="w-4 h-4" />
-                    </Button>
-                ) : (
-                    <Button>
-                        <Plus className="w-4 h-4 mr-2" />
-                        Add Account
-                    </Button>
-                )}
+                <Protect permission="MANAGE_ACCOUNTS">
+                    {account ? (
+                        <Button variant="ghost" size="icon">
+                            <Pencil className="w-4 h-4" />
+                        </Button>
+                    ) : (
+                        <Button>
+                            <Plus className="w-4 h-4 mr-2" />
+                            Add Account
+                        </Button>
+                    )}
+                </Protect>
             </DialogTrigger>
             <DialogContent className="sm:max-w-[425px]">
                 <form onSubmit={handleSubmit}>

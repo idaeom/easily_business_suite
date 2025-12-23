@@ -1,6 +1,6 @@
 import { pgEnum } from "drizzle-orm/pg-core";
 
-export const roleEnum = pgEnum("Role", ["ADMIN", "USER"]);
+export const roleEnum = pgEnum("Role", ["ADMIN", "MANAGER", "ACCOUNTANT", "CASHIER", "USER"]);
 export const accountTypeEnum = pgEnum("AccountType", ["ASSET", "LIABILITY", "EQUITY", "INCOME", "EXPENSE"]);
 export const taskStatusEnum = pgEnum("TaskStatus", ["TODO", "IN_PROGRESS", "DONE", "CERTIFIED", "APPROVED"]);
 export const expenseStatusEnum = pgEnum("ExpenseStatus", ["PENDING", "CERTIFIED", "APPROVED", "DISBURSED", "REJECTED", "PROCESSING_PAYMENT", "PAYMENT_FAILED", "PARTIALLY_PAID"]);

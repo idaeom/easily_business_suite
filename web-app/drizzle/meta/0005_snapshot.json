@@ -1,0 +1,6467 @@
+{
+  "id": "569bb8ea-9bf3-4acc-a6dd-9e57955a988e",
+  "prevId": "0449d795-c532-4784-99ce-ce1738235aa1",
+  "version": "7",
+  "dialect": "postgresql",
+  "tables": {
+    "public.AccountingConfig": {
+      "name": "AccountingConfig",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "defaultSalesAccountId": {
+          "name": "defaultSalesAccountId",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "defaultInventoryAccountId": {
+          "name": "defaultInventoryAccountId",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "defaultCogsAccountId": {
+          "name": "defaultCogsAccountId",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "defaultVarianceAccountId": {
+          "name": "defaultVarianceAccountId",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "updatedAt": {
+          "name": "updatedAt",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "AccountingConfig_defaultSalesAccountId_Account_id_fk": {
+          "name": "AccountingConfig_defaultSalesAccountId_Account_id_fk",
+          "tableFrom": "AccountingConfig",
+          "tableTo": "Account",
+          "columnsFrom": [
+            "defaultSalesAccountId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "AccountingConfig_defaultInventoryAccountId_Account_id_fk": {
+          "name": "AccountingConfig_defaultInventoryAccountId_Account_id_fk",
+          "tableFrom": "AccountingConfig",
+          "tableTo": "Account",
+          "columnsFrom": [
+            "defaultInventoryAccountId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "AccountingConfig_defaultCogsAccountId_Account_id_fk": {
+          "name": "AccountingConfig_defaultCogsAccountId_Account_id_fk",
+          "tableFrom": "AccountingConfig",
+          "tableTo": "Account",
+          "columnsFrom": [
+            "defaultCogsAccountId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "AccountingConfig_defaultVarianceAccountId_Account_id_fk": {
+          "name": "AccountingConfig_defaultVarianceAccountId_Account_id_fk",
+          "tableFrom": "AccountingConfig",
+          "tableTo": "Account",
+          "columnsFrom": [
+            "defaultVarianceAccountId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.Account": {
+      "name": "Account",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "code": {
+          "name": "code",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "type": {
+          "name": "type",
+          "type": "AccountType",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "isExternal": {
+          "name": "isExternal",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
+        "currency": {
+          "name": "currency",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'NGN'"
+        },
+        "description": {
+          "name": "description",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "balance": {
+          "name": "balance",
+          "type": "numeric(65, 30)",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'0'"
+        },
+        "provider": {
+          "name": "provider",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "credentials": {
+          "name": "credentials",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "bank_name": {
+          "name": "bank_name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "account_number": {
+          "name": "account_number",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "Account_code_unique": {
+          "name": "Account_code_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "code"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.Appraisal": {
+      "name": "Appraisal",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "userId": {
+          "name": "userId",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "reviewerId": {
+          "name": "reviewerId",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "certifierId": {
+          "name": "certifierId",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "approverId": {
+          "name": "approverId",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "period": {
+          "name": "period",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "score": {
+          "name": "score",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "kpis": {
+          "name": "kpis",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "'[]'::jsonb"
+        },
+        "objectiveScore": {
+          "name": "objectiveScore",
+          "type": "numeric(5, 2)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "hrComment": {
+          "name": "hrComment",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "comments": {
+          "name": "comments",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "status": {
+          "name": "status",
+          "type": "AppraisalStatus",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'DRAFT'"
+        },
+        "createdAt": {
+          "name": "createdAt",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updatedAt": {
+          "name": "updatedAt",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "Appraisal_userId_User_id_fk": {
+          "name": "Appraisal_userId_User_id_fk",
+          "tableFrom": "Appraisal",
+          "tableTo": "User",
+          "columnsFrom": [
+            "userId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "Appraisal_reviewerId_User_id_fk": {
+          "name": "Appraisal_reviewerId_User_id_fk",
+          "tableFrom": "Appraisal",
+          "tableTo": "User",
+          "columnsFrom": [
+            "reviewerId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "Appraisal_certifierId_User_id_fk": {
+          "name": "Appraisal_certifierId_User_id_fk",
+          "tableFrom": "Appraisal",
+          "tableTo": "User",
+          "columnsFrom": [
+            "certifierId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "Appraisal_approverId_User_id_fk": {
+          "name": "Appraisal_approverId_User_id_fk",
+          "tableFrom": "Appraisal",
+          "tableTo": "User",
+          "columnsFrom": [
+            "approverId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.Attachment": {
+      "name": "Attachment",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "url": {
+          "name": "url",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "type": {
+          "name": "type",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "size": {
+          "name": "size",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "taskId": {
+          "name": "taskId",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "expenseId": {
+          "name": "expenseId",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "leaveRequestId": {
+          "name": "leaveRequestId",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "appraisalId": {
+          "name": "appraisalId",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "payrollRunId": {
+          "name": "payrollRunId",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "profileChangeRequestId": {
+          "name": "profileChangeRequestId",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "uploaderId": {
+          "name": "uploaderId",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "createdAt": {
+          "name": "createdAt",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "Attachment_taskId_Task_id_fk": {
+          "name": "Attachment_taskId_Task_id_fk",
+          "tableFrom": "Attachment",
+          "tableTo": "Task",
+          "columnsFrom": [
+            "taskId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "Attachment_expenseId_Expense_id_fk": {
+          "name": "Attachment_expenseId_Expense_id_fk",
+          "tableFrom": "Attachment",
+          "tableTo": "Expense",
+          "columnsFrom": [
+            "expenseId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "Attachment_leaveRequestId_LeaveRequest_id_fk": {
+          "name": "Attachment_leaveRequestId_LeaveRequest_id_fk",
+          "tableFrom": "Attachment",
+          "tableTo": "LeaveRequest",
+          "columnsFrom": [
+            "leaveRequestId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "Attachment_appraisalId_Appraisal_id_fk": {
+          "name": "Attachment_appraisalId_Appraisal_id_fk",
+          "tableFrom": "Attachment",
+          "tableTo": "Appraisal",
+          "columnsFrom": [
+            "appraisalId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "Attachment_payrollRunId_PayrollRun_id_fk": {
+          "name": "Attachment_payrollRunId_PayrollRun_id_fk",
+          "tableFrom": "Attachment",
+          "tableTo": "PayrollRun",
+          "columnsFrom": [
+            "payrollRunId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "Attachment_profileChangeRequestId_ProfileChangeRequest_id_fk": {
+          "name": "Attachment_profileChangeRequestId_ProfileChangeRequest_id_fk",
+          "tableFrom": "Attachment",
+          "tableTo": "ProfileChangeRequest",
+          "columnsFrom": [
+            "profileChangeRequestId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "Attachment_uploaderId_User_id_fk": {
+          "name": "Attachment_uploaderId_User_id_fk",
+          "tableFrom": "Attachment",
+          "tableTo": "User",
+          "columnsFrom": [
+            "uploaderId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.AuditLog": {
+      "name": "AuditLog",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "action": {
+          "name": "action",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "entityId": {
+          "name": "entityId",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "entityType": {
+          "name": "entityType",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "userId": {
+          "name": "userId",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "details": {
+          "name": "details",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "createdAt": {
+          "name": "createdAt",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "AuditLog_userId_User_id_fk": {
+          "name": "AuditLog_userId_User_id_fk",
+          "tableFrom": "AuditLog",
+          "tableTo": "User",
+          "columnsFrom": [
+            "userId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.Budget": {
+      "name": "Budget",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "categoryId": {
+          "name": "categoryId",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "amount": {
+          "name": "amount",
+          "type": "numeric(65, 30)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "startDate": {
+          "name": "startDate",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "endDate": {
+          "name": "endDate",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "createdAt": {
+          "name": "createdAt",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updatedAt": {
+          "name": "updatedAt",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "Budget_categoryId_ExpenseCategory_id_fk": {
+          "name": "Budget_categoryId_ExpenseCategory_id_fk",
+          "tableFrom": "Budget",
+          "tableTo": "ExpenseCategory",
+          "columnsFrom": [
+            "categoryId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.BusinessAccount": {
+      "name": "BusinessAccount",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "code": {
+          "name": "code",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "type": {
+          "name": "type",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "usage": {
+          "name": "usage",
+          "type": "text[]",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "glAccountId": {
+          "name": "glAccountId",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "isEnabled": {
+          "name": "isEnabled",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": false,
+          "default": true
+        },
+        "createdAt": {
+          "name": "createdAt",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "BusinessAccount_glAccountId_Account_id_fk": {
+          "name": "BusinessAccount_glAccountId_Account_id_fk",
+          "tableFrom": "BusinessAccount",
+          "tableTo": "Account",
+          "columnsFrom": [
+            "glAccountId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.Comment": {
+      "name": "Comment",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "content": {
+          "name": "content",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "taskId": {
+          "name": "taskId",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "expenseId": {
+          "name": "expenseId",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "leaveRequestId": {
+          "name": "leaveRequestId",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "appraisalId": {
+          "name": "appraisalId",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "payrollRunId": {
+          "name": "payrollRunId",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "profileChangeRequestId": {
+          "name": "profileChangeRequestId",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "userId": {
+          "name": "userId",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "parentId": {
+          "name": "parentId",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "createdAt": {
+          "name": "createdAt",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "Comment_taskId_Task_id_fk": {
+          "name": "Comment_taskId_Task_id_fk",
+          "tableFrom": "Comment",
+          "tableTo": "Task",
+          "columnsFrom": [
+            "taskId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "Comment_expenseId_Expense_id_fk": {
+          "name": "Comment_expenseId_Expense_id_fk",
+          "tableFrom": "Comment",
+          "tableTo": "Expense",
+          "columnsFrom": [
+            "expenseId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "Comment_leaveRequestId_LeaveRequest_id_fk": {
+          "name": "Comment_leaveRequestId_LeaveRequest_id_fk",
+          "tableFrom": "Comment",
+          "tableTo": "LeaveRequest",
+          "columnsFrom": [
+            "leaveRequestId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "Comment_appraisalId_Appraisal_id_fk": {
+          "name": "Comment_appraisalId_Appraisal_id_fk",
+          "tableFrom": "Comment",
+          "tableTo": "Appraisal",
+          "columnsFrom": [
+            "appraisalId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "Comment_payrollRunId_PayrollRun_id_fk": {
+          "name": "Comment_payrollRunId_PayrollRun_id_fk",
+          "tableFrom": "Comment",
+          "tableTo": "PayrollRun",
+          "columnsFrom": [
+            "payrollRunId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "Comment_profileChangeRequestId_ProfileChangeRequest_id_fk": {
+          "name": "Comment_profileChangeRequestId_ProfileChangeRequest_id_fk",
+          "tableFrom": "Comment",
+          "tableTo": "ProfileChangeRequest",
+          "columnsFrom": [
+            "profileChangeRequestId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "Comment_userId_User_id_fk": {
+          "name": "Comment_userId_User_id_fk",
+          "tableFrom": "Comment",
+          "tableTo": "User",
+          "columnsFrom": [
+            "userId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "Comment_parentId_fkey": {
+          "name": "Comment_parentId_fkey",
+          "tableFrom": "Comment",
+          "tableTo": "Comment",
+          "columnsFrom": [
+            "parentId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.Contact": {
+      "name": "Contact",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "type": {
+          "name": "type",
+          "type": "contact_type",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "phone": {
+          "name": "phone",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "email": {
+          "name": "email",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "address": {
+          "name": "address",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "companyName": {
+          "name": "companyName",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "walletBalance": {
+          "name": "walletBalance",
+          "type": "numeric(65, 30)",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "'0'"
+        },
+        "creditScore": {
+          "name": "creditScore",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false,
+          "default": 50
+        },
+        "loyaltyPoints": {
+          "name": "loyaltyPoints",
+          "type": "numeric(65, 30)",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "'0'"
+        },
+        "salesRepId": {
+          "name": "salesRepId",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "contactPerson": {
+          "name": "contactPerson",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "bankName": {
+          "name": "bankName",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "accountNumber": {
+          "name": "accountNumber",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "status": {
+          "name": "status",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "'ACTIVE'"
+        },
+        "createdAt": {
+          "name": "createdAt",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "Contact_salesRepId_User_id_fk": {
+          "name": "Contact_salesRepId_User_id_fk",
+          "tableFrom": "Contact",
+          "tableTo": "User",
+          "columnsFrom": [
+            "salesRepId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.CustomerLedgerEntry": {
+      "name": "CustomerLedgerEntry",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "contactId": {
+          "name": "contactId",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "transactionId": {
+          "name": "transactionId",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "saleId": {
+          "name": "saleId",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "entryDate": {
+          "name": "entryDate",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "description": {
+          "name": "description",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "debit": {
+          "name": "debit",
+          "type": "numeric(65, 30)",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "'0'"
+        },
+        "credit": {
+          "name": "credit",
+          "type": "numeric(65, 30)",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "'0'"
+        },
+        "balanceAfter": {
+          "name": "balanceAfter",
+          "type": "numeric(65, 30)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "status": {
+          "name": "status",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "'CONFIRMED'"
+        },
+        "reconciledById": {
+          "name": "reconciledById",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "reconciledAt": {
+          "name": "reconciledAt",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "createdAt": {
+          "name": "createdAt",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "CustomerLedgerEntry_contactId_Contact_id_fk": {
+          "name": "CustomerLedgerEntry_contactId_Contact_id_fk",
+          "tableFrom": "CustomerLedgerEntry",
+          "tableTo": "Contact",
+          "columnsFrom": [
+            "contactId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "CustomerLedgerEntry_transactionId_PosTransaction_id_fk": {
+          "name": "CustomerLedgerEntry_transactionId_PosTransaction_id_fk",
+          "tableFrom": "CustomerLedgerEntry",
+          "tableTo": "PosTransaction",
+          "columnsFrom": [
+            "transactionId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "CustomerLedgerEntry_saleId_SpSale_id_fk": {
+          "name": "CustomerLedgerEntry_saleId_SpSale_id_fk",
+          "tableFrom": "CustomerLedgerEntry",
+          "tableTo": "SpSale",
+          "columnsFrom": [
+            "saleId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "CustomerLedgerEntry_reconciledById_User_id_fk": {
+          "name": "CustomerLedgerEntry_reconciledById_User_id_fk",
+          "tableFrom": "CustomerLedgerEntry",
+          "tableTo": "User",
+          "columnsFrom": [
+            "reconciledById"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.Discount": {
+      "name": "Discount",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "type": {
+          "name": "type",
+          "type": "DiscountType",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "value": {
+          "name": "value",
+          "type": "numeric(65, 30)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "isEnabled": {
+          "name": "isEnabled",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": false,
+          "default": true
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.DispatchGrnEntry": {
+      "name": "DispatchGrnEntry",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "dispatchId": {
+          "name": "dispatchId",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "itemId": {
+          "name": "itemId",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "quantityDispatched": {
+          "name": "quantityDispatched",
+          "type": "numeric(65, 30)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "quantityDelivered": {
+          "name": "quantityDelivered",
+          "type": "numeric(65, 30)",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "'0'"
+        },
+        "quantityReturned": {
+          "name": "quantityReturned",
+          "type": "numeric(65, 30)",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "'0'"
+        },
+        "condition": {
+          "name": "condition",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "'GOOD'"
+        },
+        "comments": {
+          "name": "comments",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "DispatchGrnEntry_dispatchId_Dispatch_id_fk": {
+          "name": "DispatchGrnEntry_dispatchId_Dispatch_id_fk",
+          "tableFrom": "DispatchGrnEntry",
+          "tableTo": "Dispatch",
+          "columnsFrom": [
+            "dispatchId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "DispatchGrnEntry_itemId_Item_id_fk": {
+          "name": "DispatchGrnEntry_itemId_Item_id_fk",
+          "tableFrom": "DispatchGrnEntry",
+          "tableTo": "Item",
+          "columnsFrom": [
+            "itemId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.Dispatch": {
+      "name": "Dispatch",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "salesId": {
+          "name": "salesId",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "transferId": {
+          "name": "transferId",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "contactId": {
+          "name": "contactId",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "outletId": {
+          "name": "outletId",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "dispatchDate": {
+          "name": "dispatchDate",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "status": {
+          "name": "status",
+          "type": "DispatchStatus",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'PENDING'"
+        },
+        "deliveryMethod": {
+          "name": "deliveryMethod",
+          "type": "DeliveryMethod",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'DELIVERY'"
+        },
+        "haulageId": {
+          "name": "haulageId",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "driverName": {
+          "name": "driverName",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "vehicleNumber": {
+          "name": "vehicleNumber",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "deliveryAddress": {
+          "name": "deliveryAddress",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "notes": {
+          "name": "notes",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "dispatchedById": {
+          "name": "dispatchedById",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "createdAt": {
+          "name": "createdAt",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "Dispatch_salesId_SpSale_id_fk": {
+          "name": "Dispatch_salesId_SpSale_id_fk",
+          "tableFrom": "Dispatch",
+          "tableTo": "SpSale",
+          "columnsFrom": [
+            "salesId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "Dispatch_transferId_InventoryTransfer_id_fk": {
+          "name": "Dispatch_transferId_InventoryTransfer_id_fk",
+          "tableFrom": "Dispatch",
+          "tableTo": "InventoryTransfer",
+          "columnsFrom": [
+            "transferId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "Dispatch_contactId_Contact_id_fk": {
+          "name": "Dispatch_contactId_Contact_id_fk",
+          "tableFrom": "Dispatch",
+          "tableTo": "Contact",
+          "columnsFrom": [
+            "contactId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "Dispatch_outletId_Outlet_id_fk": {
+          "name": "Dispatch_outletId_Outlet_id_fk",
+          "tableFrom": "Dispatch",
+          "tableTo": "Outlet",
+          "columnsFrom": [
+            "outletId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "Dispatch_haulageId_Haulage_id_fk": {
+          "name": "Dispatch_haulageId_Haulage_id_fk",
+          "tableFrom": "Dispatch",
+          "tableTo": "Haulage",
+          "columnsFrom": [
+            "haulageId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "Dispatch_dispatchedById_User_id_fk": {
+          "name": "Dispatch_dispatchedById_User_id_fk",
+          "tableFrom": "Dispatch",
+          "tableTo": "User",
+          "columnsFrom": [
+            "dispatchedById"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.EmployeeProfile": {
+      "name": "EmployeeProfile",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "userId": {
+          "name": "userId",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "jobTitle": {
+          "name": "jobTitle",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "employmentType": {
+          "name": "employmentType",
+          "type": "EmploymentType",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'FULL_TIME'"
+        },
+        "basicSalary": {
+          "name": "basicSalary",
+          "type": "numeric(65, 30)",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'0'"
+        },
+        "housingAllowance": {
+          "name": "housingAllowance",
+          "type": "numeric(65, 30)",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'0'"
+        },
+        "transportAllowance": {
+          "name": "transportAllowance",
+          "type": "numeric(65, 30)",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'0'"
+        },
+        "otherAllowances": {
+          "name": "otherAllowances",
+          "type": "numeric(65, 30)",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'0'"
+        },
+        "isPensionActive": {
+          "name": "isPensionActive",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": false,
+          "default": true
+        },
+        "pensionVoluntary": {
+          "name": "pensionVoluntary",
+          "type": "numeric(65, 30)",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "'0'"
+        },
+        "isNhfActive": {
+          "name": "isNhfActive",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": false,
+          "default": false
+        },
+        "isNhisActive": {
+          "name": "isNhisActive",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": false,
+          "default": false
+        },
+        "lifeAssurance": {
+          "name": "lifeAssurance",
+          "type": "numeric(65, 30)",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "'0'"
+        },
+        "bankName": {
+          "name": "bankName",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "accountNumber": {
+          "name": "accountNumber",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "taxId": {
+          "name": "taxId",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "pensionId": {
+          "name": "pensionId",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "pfaName": {
+          "name": "pfaName",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "pfaCode": {
+          "name": "pfaCode",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "createdAt": {
+          "name": "createdAt",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updatedAt": {
+          "name": "updatedAt",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "EmployeeProfile_userId_User_id_fk": {
+          "name": "EmployeeProfile_userId_User_id_fk",
+          "tableFrom": "EmployeeProfile",
+          "tableTo": "User",
+          "columnsFrom": [
+            "userId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "EmployeeProfile_userId_unique": {
+          "name": "EmployeeProfile_userId_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "userId"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.ExpenseBeneficiary": {
+      "name": "ExpenseBeneficiary",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "expenseId": {
+          "name": "expenseId",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "bankName": {
+          "name": "bankName",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "bankCode": {
+          "name": "bankCode",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "accountNumber": {
+          "name": "accountNumber",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "amount": {
+          "name": "amount",
+          "type": "numeric(65, 30)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "recipientCode": {
+          "name": "recipientCode",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "transferCode": {
+          "name": "transferCode",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "status": {
+          "name": "status",
+          "type": "BeneficiaryStatus",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'PENDING'"
+        },
+        "createdAt": {
+          "name": "createdAt",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updatedAt": {
+          "name": "updatedAt",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "ExpenseBeneficiary_expenseId_Expense_id_fk": {
+          "name": "ExpenseBeneficiary_expenseId_Expense_id_fk",
+          "tableFrom": "ExpenseBeneficiary",
+          "tableTo": "Expense",
+          "columnsFrom": [
+            "expenseId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.ExpenseCategory": {
+      "name": "ExpenseCategory",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "description": {
+          "name": "description",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "createdAt": {
+          "name": "createdAt",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updatedAt": {
+          "name": "updatedAt",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "ExpenseCategory_name_unique": {
+          "name": "ExpenseCategory_name_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "name"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.Expense": {
+      "name": "Expense",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "description": {
+          "name": "description",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "amount": {
+          "name": "amount",
+          "type": "numeric(65, 30)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "status": {
+          "name": "status",
+          "type": "ExpenseStatus",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'PENDING'"
+        },
+        "category": {
+          "name": "category",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "payee": {
+          "name": "payee",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "payeeBankName": {
+          "name": "payeeBankName",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "payeeAccountNumber": {
+          "name": "payeeAccountNumber",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "incurredAt": {
+          "name": "incurredAt",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "now()"
+        },
+        "taskId": {
+          "name": "taskId",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "requesterId": {
+          "name": "requesterId",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "approverId": {
+          "name": "approverId",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "sourceAccountId": {
+          "name": "sourceAccountId",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "expenseAccountId": {
+          "name": "expenseAccountId",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "outletId": {
+          "name": "outletId",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "createdAt": {
+          "name": "createdAt",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updatedAt": {
+          "name": "updatedAt",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "Expense_taskId_Task_id_fk": {
+          "name": "Expense_taskId_Task_id_fk",
+          "tableFrom": "Expense",
+          "tableTo": "Task",
+          "columnsFrom": [
+            "taskId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "Expense_requesterId_User_id_fk": {
+          "name": "Expense_requesterId_User_id_fk",
+          "tableFrom": "Expense",
+          "tableTo": "User",
+          "columnsFrom": [
+            "requesterId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "Expense_approverId_User_id_fk": {
+          "name": "Expense_approverId_User_id_fk",
+          "tableFrom": "Expense",
+          "tableTo": "User",
+          "columnsFrom": [
+            "approverId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "Expense_sourceAccountId_Account_id_fk": {
+          "name": "Expense_sourceAccountId_Account_id_fk",
+          "tableFrom": "Expense",
+          "tableTo": "Account",
+          "columnsFrom": [
+            "sourceAccountId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "Expense_expenseAccountId_Account_id_fk": {
+          "name": "Expense_expenseAccountId_Account_id_fk",
+          "tableFrom": "Expense",
+          "tableTo": "Account",
+          "columnsFrom": [
+            "expenseAccountId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "Expense_outletId_Outlet_id_fk": {
+          "name": "Expense_outletId_Outlet_id_fk",
+          "tableFrom": "Expense",
+          "tableTo": "Outlet",
+          "columnsFrom": [
+            "outletId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.Haulage": {
+      "name": "Haulage",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "providerName": {
+          "name": "providerName",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "contactPerson": {
+          "name": "contactPerson",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "phone": {
+          "name": "phone",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "vehicleType": {
+          "name": "vehicleType",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "status": {
+          "name": "status",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "'ACTIVE'"
+        },
+        "createdAt": {
+          "name": "createdAt",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.Inventory": {
+      "name": "Inventory",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "itemId": {
+          "name": "itemId",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "outletId": {
+          "name": "outletId",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "quantity": {
+          "name": "quantity",
+          "type": "numeric(65, 30)",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'0'"
+        },
+        "minStockLevel": {
+          "name": "minStockLevel",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false,
+          "default": 0
+        },
+        "createdAt": {
+          "name": "createdAt",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updatedAt": {
+          "name": "updatedAt",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "inventory_item_outlet_unique": {
+          "name": "inventory_item_outlet_unique",
+          "columns": [
+            {
+              "expression": "itemId",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "outletId",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "Inventory_itemId_Item_id_fk": {
+          "name": "Inventory_itemId_Item_id_fk",
+          "tableFrom": "Inventory",
+          "tableTo": "Item",
+          "columnsFrom": [
+            "itemId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "Inventory_outletId_Outlet_id_fk": {
+          "name": "Inventory_outletId_Outlet_id_fk",
+          "tableFrom": "Inventory",
+          "tableTo": "Outlet",
+          "columnsFrom": [
+            "outletId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.InventoryAdjustment": {
+      "name": "InventoryAdjustment",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "itemId": {
+          "name": "itemId",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "outletId": {
+          "name": "outletId",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "quantityChange": {
+          "name": "quantityChange",
+          "type": "numeric(65, 30)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "reason": {
+          "name": "reason",
+          "type": "AdjustmentType",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "notes": {
+          "name": "notes",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "userId": {
+          "name": "userId",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "createdAt": {
+          "name": "createdAt",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "InventoryAdjustment_itemId_Item_id_fk": {
+          "name": "InventoryAdjustment_itemId_Item_id_fk",
+          "tableFrom": "InventoryAdjustment",
+          "tableTo": "Item",
+          "columnsFrom": [
+            "itemId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "InventoryAdjustment_outletId_Outlet_id_fk": {
+          "name": "InventoryAdjustment_outletId_Outlet_id_fk",
+          "tableFrom": "InventoryAdjustment",
+          "tableTo": "Outlet",
+          "columnsFrom": [
+            "outletId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "InventoryAdjustment_userId_User_id_fk": {
+          "name": "InventoryAdjustment_userId_User_id_fk",
+          "tableFrom": "InventoryAdjustment",
+          "tableTo": "User",
+          "columnsFrom": [
+            "userId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.InventoryTransfer": {
+      "name": "InventoryTransfer",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "sourceOutletId": {
+          "name": "sourceOutletId",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "destinationOutletId": {
+          "name": "destinationOutletId",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "status": {
+          "name": "status",
+          "type": "TransferStatus",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'PENDING'"
+        },
+        "type": {
+          "name": "type",
+          "type": "TransferType",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'DISPATCH'"
+        },
+        "items": {
+          "name": "items",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "notes": {
+          "name": "notes",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "createdById": {
+          "name": "createdById",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "receivedById": {
+          "name": "receivedById",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "receivedAt": {
+          "name": "receivedAt",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "createdAt": {
+          "name": "createdAt",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updatedAt": {
+          "name": "updatedAt",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "InventoryTransfer_sourceOutletId_Outlet_id_fk": {
+          "name": "InventoryTransfer_sourceOutletId_Outlet_id_fk",
+          "tableFrom": "InventoryTransfer",
+          "tableTo": "Outlet",
+          "columnsFrom": [
+            "sourceOutletId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "InventoryTransfer_destinationOutletId_Outlet_id_fk": {
+          "name": "InventoryTransfer_destinationOutletId_Outlet_id_fk",
+          "tableFrom": "InventoryTransfer",
+          "tableTo": "Outlet",
+          "columnsFrom": [
+            "destinationOutletId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "InventoryTransfer_createdById_User_id_fk": {
+          "name": "InventoryTransfer_createdById_User_id_fk",
+          "tableFrom": "InventoryTransfer",
+          "tableTo": "User",
+          "columnsFrom": [
+            "createdById"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "InventoryTransfer_receivedById_User_id_fk": {
+          "name": "InventoryTransfer_receivedById_User_id_fk",
+          "tableFrom": "InventoryTransfer",
+          "tableTo": "User",
+          "columnsFrom": [
+            "receivedById"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.ItemCategory": {
+      "name": "ItemCategory",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "businessType": {
+          "name": "businessType",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "description": {
+          "name": "description",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "createdAt": {
+          "name": "createdAt",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updatedAt": {
+          "name": "updatedAt",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "ItemCategory_name_unique": {
+          "name": "ItemCategory_name_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "name"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.ItemOutletPrice": {
+      "name": "ItemOutletPrice",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "itemId": {
+          "name": "itemId",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "outletId": {
+          "name": "outletId",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "price": {
+          "name": "price",
+          "type": "numeric(65, 30)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "createdAt": {
+          "name": "createdAt",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updatedAt": {
+          "name": "updatedAt",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "item_outlet_price_unique": {
+          "name": "item_outlet_price_unique",
+          "columns": [
+            {
+              "expression": "itemId",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "outletId",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "ItemOutletPrice_itemId_Item_id_fk": {
+          "name": "ItemOutletPrice_itemId_Item_id_fk",
+          "tableFrom": "ItemOutletPrice",
+          "tableTo": "Item",
+          "columnsFrom": [
+            "itemId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "ItemOutletPrice_outletId_Outlet_id_fk": {
+          "name": "ItemOutletPrice_outletId_Outlet_id_fk",
+          "tableFrom": "ItemOutletPrice",
+          "tableTo": "Outlet",
+          "columnsFrom": [
+            "outletId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.Item": {
+      "name": "Item",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "price": {
+          "name": "price",
+          "type": "numeric(65, 30)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "costPrice": {
+          "name": "costPrice",
+          "type": "numeric(65, 30)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "category": {
+          "name": "category",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "imageUrl": {
+          "name": "imageUrl",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "itemType": {
+          "name": "itemType",
+          "type": "ItemType",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "sku": {
+          "name": "sku",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "barcode": {
+          "name": "barcode",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "quantity": {
+          "name": "quantity",
+          "type": "numeric(65, 30)",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'0'"
+        },
+        "minStockLevel": {
+          "name": "minStockLevel",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false,
+          "default": 0
+        },
+        "createdAt": {
+          "name": "createdAt",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "Item_sku_unique": {
+          "name": "Item_sku_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "sku"
+          ]
+        },
+        "Item_barcode_unique": {
+          "name": "Item_barcode_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "barcode"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.LeaveRequest": {
+      "name": "LeaveRequest",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "userId": {
+          "name": "userId",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "type": {
+          "name": "type",
+          "type": "LeaveType",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "startDate": {
+          "name": "startDate",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "endDate": {
+          "name": "endDate",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "reason": {
+          "name": "reason",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "status": {
+          "name": "status",
+          "type": "LeaveStatus",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'DRAFT'"
+        },
+        "approverId": {
+          "name": "approverId",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "certifierId": {
+          "name": "certifierId",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "createdAt": {
+          "name": "createdAt",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updatedAt": {
+          "name": "updatedAt",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "LeaveRequest_userId_User_id_fk": {
+          "name": "LeaveRequest_userId_User_id_fk",
+          "tableFrom": "LeaveRequest",
+          "tableTo": "User",
+          "columnsFrom": [
+            "userId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "LeaveRequest_approverId_User_id_fk": {
+          "name": "LeaveRequest_approverId_User_id_fk",
+          "tableFrom": "LeaveRequest",
+          "tableTo": "User",
+          "columnsFrom": [
+            "approverId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "LeaveRequest_certifierId_User_id_fk": {
+          "name": "LeaveRequest_certifierId_User_id_fk",
+          "tableFrom": "LeaveRequest",
+          "tableTo": "User",
+          "columnsFrom": [
+            "certifierId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.LedgerEntry": {
+      "name": "LedgerEntry",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "transactionId": {
+          "name": "transactionId",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "accountId": {
+          "name": "accountId",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "amount": {
+          "name": "amount",
+          "type": "numeric(65, 30)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "direction": {
+          "name": "direction",
+          "type": "TransactionDirection",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "description": {
+          "name": "description",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "LedgerEntry_transactionId_Transaction_id_fk": {
+          "name": "LedgerEntry_transactionId_Transaction_id_fk",
+          "tableFrom": "LedgerEntry",
+          "tableTo": "Transaction",
+          "columnsFrom": [
+            "transactionId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "LedgerEntry_accountId_Account_id_fk": {
+          "name": "LedgerEntry_accountId_Account_id_fk",
+          "tableFrom": "LedgerEntry",
+          "tableTo": "Account",
+          "columnsFrom": [
+            "accountId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.LoyaltyLog": {
+      "name": "LoyaltyLog",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "contactId": {
+          "name": "contactId",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "outletId": {
+          "name": "outletId",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "points": {
+          "name": "points",
+          "type": "numeric(65, 30)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "type": {
+          "name": "type",
+          "type": "loyalty_log_type",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "referenceId": {
+          "name": "referenceId",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "description": {
+          "name": "description",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "createdAt": {
+          "name": "createdAt",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "LoyaltyLog_contactId_Contact_id_fk": {
+          "name": "LoyaltyLog_contactId_Contact_id_fk",
+          "tableFrom": "LoyaltyLog",
+          "tableTo": "Contact",
+          "columnsFrom": [
+            "contactId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "LoyaltyLog_outletId_Outlet_id_fk": {
+          "name": "LoyaltyLog_outletId_Outlet_id_fk",
+          "tableFrom": "LoyaltyLog",
+          "tableTo": "Outlet",
+          "columnsFrom": [
+            "outletId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.Notification": {
+      "name": "Notification",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "userId": {
+          "name": "userId",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "title": {
+          "name": "title",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "message": {
+          "name": "message",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "read": {
+          "name": "read",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
+        "createdAt": {
+          "name": "createdAt",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "Notification_userId_User_id_fk": {
+          "name": "Notification_userId_User_id_fk",
+          "tableFrom": "Notification",
+          "tableTo": "User",
+          "columnsFrom": [
+            "userId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.Outlet": {
+      "name": "Outlet",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "address": {
+          "name": "address",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "phone": {
+          "name": "phone",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "walletAccountNumber": {
+          "name": "walletAccountNumber",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "bankName": {
+          "name": "bankName",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "loyaltyEarningRate": {
+          "name": "loyaltyEarningRate",
+          "type": "numeric(65, 30)",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "'0.05'"
+        },
+        "loyaltyRedemptionRate": {
+          "name": "loyaltyRedemptionRate",
+          "type": "numeric(65, 30)",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "'1.0'"
+        },
+        "createdAt": {
+          "name": "createdAt",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.PaymentMethod": {
+      "name": "PaymentMethod",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "code": {
+          "name": "code",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "isEnabled": {
+          "name": "isEnabled",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": false,
+          "default": true
+        },
+        "glAccountId": {
+          "name": "glAccountId",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "PaymentMethod_glAccountId_Account_id_fk": {
+          "name": "PaymentMethod_glAccountId_Account_id_fk",
+          "tableFrom": "PaymentMethod",
+          "tableTo": "Account",
+          "columnsFrom": [
+            "glAccountId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "PaymentMethod_code_unique": {
+          "name": "PaymentMethod_code_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "code"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.PayrollItem": {
+      "name": "PayrollItem",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "payrollRunId": {
+          "name": "payrollRunId",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "userId": {
+          "name": "userId",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "grossPay": {
+          "name": "grossPay",
+          "type": "numeric(65, 30)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "netPay": {
+          "name": "netPay",
+          "type": "numeric(65, 30)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "breakdown": {
+          "name": "breakdown",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "'{\"basic\":0,\"housing\":0,\"transport\":0,\"tax\":0,\"pension\":0,\"otherDeductions\":0,\"bonuses\":0}'::jsonb"
+        },
+        "createdAt": {
+          "name": "createdAt",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "PayrollItem_payrollRunId_PayrollRun_id_fk": {
+          "name": "PayrollItem_payrollRunId_PayrollRun_id_fk",
+          "tableFrom": "PayrollItem",
+          "tableTo": "PayrollRun",
+          "columnsFrom": [
+            "payrollRunId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "PayrollItem_userId_User_id_fk": {
+          "name": "PayrollItem_userId_User_id_fk",
+          "tableFrom": "PayrollItem",
+          "tableTo": "User",
+          "columnsFrom": [
+            "userId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.PayrollRun": {
+      "name": "PayrollRun",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "month": {
+          "name": "month",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "year": {
+          "name": "year",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "totalAmount": {
+          "name": "totalAmount",
+          "type": "numeric(65, 30)",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'0'"
+        },
+        "status": {
+          "name": "status",
+          "type": "PayrollStatus",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'DRAFT'"
+        },
+        "certifierId": {
+          "name": "certifierId",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "approverId": {
+          "name": "approverId",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "expenseId": {
+          "name": "expenseId",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "expenseMeta": {
+          "name": "expenseMeta",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "config": {
+          "name": "config",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "createdAt": {
+          "name": "createdAt",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updatedAt": {
+          "name": "updatedAt",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "PayrollRun_certifierId_User_id_fk": {
+          "name": "PayrollRun_certifierId_User_id_fk",
+          "tableFrom": "PayrollRun",
+          "tableTo": "User",
+          "columnsFrom": [
+            "certifierId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "PayrollRun_approverId_User_id_fk": {
+          "name": "PayrollRun_approverId_User_id_fk",
+          "tableFrom": "PayrollRun",
+          "tableTo": "User",
+          "columnsFrom": [
+            "approverId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "PayrollRun_expenseId_Expense_id_fk": {
+          "name": "PayrollRun_expenseId_Expense_id_fk",
+          "tableFrom": "PayrollRun",
+          "tableTo": "Expense",
+          "columnsFrom": [
+            "expenseId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.Shift": {
+      "name": "Shift",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "outletId": {
+          "name": "outletId",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "cashierId": {
+          "name": "cashierId",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "startTime": {
+          "name": "startTime",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "endTime": {
+          "name": "endTime",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "startCash": {
+          "name": "startCash",
+          "type": "numeric(65, 30)",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "'0'"
+        },
+        "status": {
+          "name": "status",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "'OPEN'"
+        },
+        "expectedCash": {
+          "name": "expectedCash",
+          "type": "numeric(65, 30)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "actualCash": {
+          "name": "actualCash",
+          "type": "numeric(65, 30)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "expectedCard": {
+          "name": "expectedCard",
+          "type": "numeric(65, 30)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "actualCard": {
+          "name": "actualCard",
+          "type": "numeric(65, 30)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "expectedTransfer": {
+          "name": "expectedTransfer",
+          "type": "numeric(65, 30)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "actualTransfer": {
+          "name": "actualTransfer",
+          "type": "numeric(65, 30)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "verifiedCash": {
+          "name": "verifiedCash",
+          "type": "numeric(65, 30)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "verifiedCard": {
+          "name": "verifiedCard",
+          "type": "numeric(65, 30)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "isReconciled": {
+          "name": "isReconciled",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": false,
+          "default": false
+        },
+        "notes": {
+          "name": "notes",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "createdAt": {
+          "name": "createdAt",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "Shift_outletId_Outlet_id_fk": {
+          "name": "Shift_outletId_Outlet_id_fk",
+          "tableFrom": "Shift",
+          "tableTo": "Outlet",
+          "columnsFrom": [
+            "outletId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "Shift_cashierId_User_id_fk": {
+          "name": "Shift_cashierId_User_id_fk",
+          "tableFrom": "Shift",
+          "tableTo": "User",
+          "columnsFrom": [
+            "cashierId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.PosTransaction": {
+      "name": "PosTransaction",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "shiftId": {
+          "name": "shiftId",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "saleId": {
+          "name": "saleId",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "contactId": {
+          "name": "contactId",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "transactionDate": {
+          "name": "transactionDate",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "totalAmount": {
+          "name": "totalAmount",
+          "type": "numeric(65, 30)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "status": {
+          "name": "status",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "'COMPLETED'"
+        },
+        "itemsSnapshot": {
+          "name": "itemsSnapshot",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "discountId": {
+          "name": "discountId",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "discountAmount": {
+          "name": "discountAmount",
+          "type": "numeric(65, 30)",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "'0'"
+        },
+        "taxAmount": {
+          "name": "taxAmount",
+          "type": "numeric(65, 30)",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "'0'"
+        },
+        "taxSnapshot": {
+          "name": "taxSnapshot",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "loyaltyPointsEarned": {
+          "name": "loyaltyPointsEarned",
+          "type": "numeric(65, 30)",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "'0'"
+        },
+        "loyaltyPointsRedeemed": {
+          "name": "loyaltyPointsRedeemed",
+          "type": "numeric(65, 30)",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "'0'"
+        },
+        "originalTransactionId": {
+          "name": "originalTransactionId",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "isRefund": {
+          "name": "isRefund",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": false,
+          "default": false
+        },
+        "createdAt": {
+          "name": "createdAt",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "PosTransaction_shiftId_Shift_id_fk": {
+          "name": "PosTransaction_shiftId_Shift_id_fk",
+          "tableFrom": "PosTransaction",
+          "tableTo": "Shift",
+          "columnsFrom": [
+            "shiftId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "PosTransaction_saleId_SpSale_id_fk": {
+          "name": "PosTransaction_saleId_SpSale_id_fk",
+          "tableFrom": "PosTransaction",
+          "tableTo": "SpSale",
+          "columnsFrom": [
+            "saleId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "PosTransaction_contactId_Contact_id_fk": {
+          "name": "PosTransaction_contactId_Contact_id_fk",
+          "tableFrom": "PosTransaction",
+          "tableTo": "Contact",
+          "columnsFrom": [
+            "contactId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "PosTransaction_discountId_Discount_id_fk": {
+          "name": "PosTransaction_discountId_Discount_id_fk",
+          "tableFrom": "PosTransaction",
+          "tableTo": "Discount",
+          "columnsFrom": [
+            "discountId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "PosTransaction_originalTransactionId_PosTransaction_id_fk": {
+          "name": "PosTransaction_originalTransactionId_PosTransaction_id_fk",
+          "tableFrom": "PosTransaction",
+          "tableTo": "PosTransaction",
+          "columnsFrom": [
+            "originalTransactionId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.ProfileChangeRequest": {
+      "name": "ProfileChangeRequest",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "userId": {
+          "name": "userId",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "requesterId": {
+          "name": "requesterId",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "data": {
+          "name": "data",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "status": {
+          "name": "status",
+          "type": "ProfileChangeStatus",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'PENDING_CERTIFICATION'"
+        },
+        "certifierId": {
+          "name": "certifierId",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "approverId": {
+          "name": "approverId",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "rejectionReason": {
+          "name": "rejectionReason",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "createdAt": {
+          "name": "createdAt",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updatedAt": {
+          "name": "updatedAt",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "ProfileChangeRequest_userId_User_id_fk": {
+          "name": "ProfileChangeRequest_userId_User_id_fk",
+          "tableFrom": "ProfileChangeRequest",
+          "tableTo": "User",
+          "columnsFrom": [
+            "userId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "ProfileChangeRequest_requesterId_User_id_fk": {
+          "name": "ProfileChangeRequest_requesterId_User_id_fk",
+          "tableFrom": "ProfileChangeRequest",
+          "tableTo": "User",
+          "columnsFrom": [
+            "requesterId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "ProfileChangeRequest_certifierId_User_id_fk": {
+          "name": "ProfileChangeRequest_certifierId_User_id_fk",
+          "tableFrom": "ProfileChangeRequest",
+          "tableTo": "User",
+          "columnsFrom": [
+            "certifierId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "ProfileChangeRequest_approverId_User_id_fk": {
+          "name": "ProfileChangeRequest_approverId_User_id_fk",
+          "tableFrom": "ProfileChangeRequest",
+          "tableTo": "User",
+          "columnsFrom": [
+            "approverId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.RequestGrn": {
+      "name": "RequestGrn",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "requestOrderId": {
+          "name": "requestOrderId",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "transferId": {
+          "name": "transferId",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "receivedDate": {
+          "name": "receivedDate",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "receivedById": {
+          "name": "receivedById",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "vendorInvoiceNumber": {
+          "name": "vendorInvoiceNumber",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "itemsLogged": {
+          "name": "itemsLogged",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "createdAt": {
+          "name": "createdAt",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "RequestGrn_requestOrderId_RequestOrder_id_fk": {
+          "name": "RequestGrn_requestOrderId_RequestOrder_id_fk",
+          "tableFrom": "RequestGrn",
+          "tableTo": "RequestOrder",
+          "columnsFrom": [
+            "requestOrderId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "RequestGrn_transferId_InventoryTransfer_id_fk": {
+          "name": "RequestGrn_transferId_InventoryTransfer_id_fk",
+          "tableFrom": "RequestGrn",
+          "tableTo": "InventoryTransfer",
+          "columnsFrom": [
+            "transferId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "RequestGrn_receivedById_User_id_fk": {
+          "name": "RequestGrn_receivedById_User_id_fk",
+          "tableFrom": "RequestGrn",
+          "tableTo": "User",
+          "columnsFrom": [
+            "receivedById"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.RequestOrderItem": {
+      "name": "RequestOrderItem",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "requestOrderId": {
+          "name": "requestOrderId",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "itemId": {
+          "name": "itemId",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "quantity": {
+          "name": "quantity",
+          "type": "numeric(65, 30)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "estimatedUnitPrice": {
+          "name": "estimatedUnitPrice",
+          "type": "numeric(65, 30)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "actualUnitPrice": {
+          "name": "actualUnitPrice",
+          "type": "numeric(65, 30)",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "RequestOrderItem_requestOrderId_RequestOrder_id_fk": {
+          "name": "RequestOrderItem_requestOrderId_RequestOrder_id_fk",
+          "tableFrom": "RequestOrderItem",
+          "tableTo": "RequestOrder",
+          "columnsFrom": [
+            "requestOrderId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "RequestOrderItem_itemId_Item_id_fk": {
+          "name": "RequestOrderItem_itemId_Item_id_fk",
+          "tableFrom": "RequestOrderItem",
+          "tableTo": "Item",
+          "columnsFrom": [
+            "itemId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.RequestOrder": {
+      "name": "RequestOrder",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "requesterName": {
+          "name": "requesterName",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "requesterId": {
+          "name": "requesterId",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "outletId": {
+          "name": "outletId",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "requestDate": {
+          "name": "requestDate",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "description": {
+          "name": "description",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "status": {
+          "name": "status",
+          "type": "RequestOrderStatus",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'PENDING_APPROVAL'"
+        },
+        "approvedVendorId": {
+          "name": "approvedVendorId",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "totalEstimatedAmount": {
+          "name": "totalEstimatedAmount",
+          "type": "numeric(65, 30)",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "'0'"
+        },
+        "createdAt": {
+          "name": "createdAt",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "RequestOrder_requesterId_User_id_fk": {
+          "name": "RequestOrder_requesterId_User_id_fk",
+          "tableFrom": "RequestOrder",
+          "tableTo": "User",
+          "columnsFrom": [
+            "requesterId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "RequestOrder_outletId_Outlet_id_fk": {
+          "name": "RequestOrder_outletId_Outlet_id_fk",
+          "tableFrom": "RequestOrder",
+          "tableTo": "Outlet",
+          "columnsFrom": [
+            "outletId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "RequestOrder_approvedVendorId_Contact_id_fk": {
+          "name": "RequestOrder_approvedVendorId_Contact_id_fk",
+          "tableFrom": "RequestOrder",
+          "tableTo": "Contact",
+          "columnsFrom": [
+            "approvedVendorId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.RequestPriceSurvey": {
+      "name": "RequestPriceSurvey",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "requestOrderId": {
+          "name": "requestOrderId",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "vendorId": {
+          "name": "vendorId",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "vendorName": {
+          "name": "vendorName",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "priceQuote": {
+          "name": "priceQuote",
+          "type": "numeric(65, 30)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "notes": {
+          "name": "notes",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "createdAt": {
+          "name": "createdAt",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "RequestPriceSurvey_requestOrderId_RequestOrder_id_fk": {
+          "name": "RequestPriceSurvey_requestOrderId_RequestOrder_id_fk",
+          "tableFrom": "RequestPriceSurvey",
+          "tableTo": "RequestOrder",
+          "columnsFrom": [
+            "requestOrderId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "RequestPriceSurvey_vendorId_Contact_id_fk": {
+          "name": "RequestPriceSurvey_vendorId_Contact_id_fk",
+          "tableFrom": "RequestPriceSurvey",
+          "tableTo": "Contact",
+          "columnsFrom": [
+            "vendorId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.SalesTax": {
+      "name": "SalesTax",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "rate": {
+          "name": "rate",
+          "type": "numeric(65, 30)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "type": {
+          "name": "type",
+          "type": "TaxType",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'EXCLUSIVE'"
+        },
+        "isEnabled": {
+          "name": "isEnabled",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": false,
+          "default": true
+        },
+        "glAccountId": {
+          "name": "glAccountId",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "createdAt": {
+          "name": "createdAt",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updatedAt": {
+          "name": "updatedAt",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "SalesTax_glAccountId_Account_id_fk": {
+          "name": "SalesTax_glAccountId_Account_id_fk",
+          "tableFrom": "SalesTax",
+          "tableTo": "Account",
+          "columnsFrom": [
+            "glAccountId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.shift_cash_deposits": {
+      "name": "shift_cash_deposits",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "shiftId": {
+          "name": "shiftId",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "amount": {
+          "name": "amount",
+          "type": "numeric(65, 30)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "accountId": {
+          "name": "accountId",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "reference": {
+          "name": "reference",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "notes": {
+          "name": "notes",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "depositedById": {
+          "name": "depositedById",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "status": {
+          "name": "status",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "'PENDING'"
+        },
+        "reconciledById": {
+          "name": "reconciledById",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "reconciledAt": {
+          "name": "reconciledAt",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "createdAt": {
+          "name": "createdAt",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "shift_cash_deposits_shiftId_Shift_id_fk": {
+          "name": "shift_cash_deposits_shiftId_Shift_id_fk",
+          "tableFrom": "shift_cash_deposits",
+          "tableTo": "Shift",
+          "columnsFrom": [
+            "shiftId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "shift_cash_deposits_accountId_Account_id_fk": {
+          "name": "shift_cash_deposits_accountId_Account_id_fk",
+          "tableFrom": "shift_cash_deposits",
+          "tableTo": "Account",
+          "columnsFrom": [
+            "accountId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "shift_cash_deposits_depositedById_User_id_fk": {
+          "name": "shift_cash_deposits_depositedById_User_id_fk",
+          "tableFrom": "shift_cash_deposits",
+          "tableTo": "User",
+          "columnsFrom": [
+            "depositedById"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "shift_cash_deposits_reconciledById_User_id_fk": {
+          "name": "shift_cash_deposits_reconciledById_User_id_fk",
+          "tableFrom": "shift_cash_deposits",
+          "tableTo": "User",
+          "columnsFrom": [
+            "reconciledById"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.shift_reconciliations": {
+      "name": "shift_reconciliations",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "shiftId": {
+          "name": "shiftId",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "paymentMethodCode": {
+          "name": "paymentMethodCode",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "accountId": {
+          "name": "accountId",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "status": {
+          "name": "status",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "'PENDING'"
+        },
+        "expectedAmount": {
+          "name": "expectedAmount",
+          "type": "numeric(65, 30)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "actualAmount": {
+          "name": "actualAmount",
+          "type": "numeric(65, 30)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "difference": {
+          "name": "difference",
+          "type": "numeric(65, 30)",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "'0'"
+        },
+        "notes": {
+          "name": "notes",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "createdAt": {
+          "name": "createdAt",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "shift_reconciliations_shiftId_Shift_id_fk": {
+          "name": "shift_reconciliations_shiftId_Shift_id_fk",
+          "tableFrom": "shift_reconciliations",
+          "tableTo": "Shift",
+          "columnsFrom": [
+            "shiftId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "shift_reconciliations_accountId_Account_id_fk": {
+          "name": "shift_reconciliations_accountId_Account_id_fk",
+          "tableFrom": "shift_reconciliations",
+          "tableTo": "Account",
+          "columnsFrom": [
+            "accountId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.SpQuoteItem": {
+      "name": "SpQuoteItem",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "quoteId": {
+          "name": "quoteId",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "itemId": {
+          "name": "itemId",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "itemName": {
+          "name": "itemName",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "quantity": {
+          "name": "quantity",
+          "type": "numeric(65, 30)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "unitPrice": {
+          "name": "unitPrice",
+          "type": "numeric(65, 30)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "total": {
+          "name": "total",
+          "type": "numeric(65, 30)",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "SpQuoteItem_quoteId_SpQuote_id_fk": {
+          "name": "SpQuoteItem_quoteId_SpQuote_id_fk",
+          "tableFrom": "SpQuoteItem",
+          "tableTo": "SpQuote",
+          "columnsFrom": [
+            "quoteId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "SpQuoteItem_itemId_Item_id_fk": {
+          "name": "SpQuoteItem_itemId_Item_id_fk",
+          "tableFrom": "SpQuoteItem",
+          "tableTo": "Item",
+          "columnsFrom": [
+            "itemId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.SpQuote": {
+      "name": "SpQuote",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "contactId": {
+          "name": "contactId",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "customerName": {
+          "name": "customerName",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "quoteDate": {
+          "name": "quoteDate",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "validUntil": {
+          "name": "validUntil",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "subtotal": {
+          "name": "subtotal",
+          "type": "numeric(65, 30)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "tax": {
+          "name": "tax",
+          "type": "numeric(65, 30)",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'0'"
+        },
+        "total": {
+          "name": "total",
+          "type": "numeric(65, 30)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "status": {
+          "name": "status",
+          "type": "QuoteStatus",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "notes": {
+          "name": "notes",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "discountAmount": {
+          "name": "discountAmount",
+          "type": "numeric(65, 30)",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "'0'"
+        },
+        "loyaltyPointsUsed": {
+          "name": "loyaltyPointsUsed",
+          "type": "numeric(65, 30)",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "'0'"
+        },
+        "deliveryMethod": {
+          "name": "deliveryMethod",
+          "type": "DeliveryMethod",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'DELIVERY'"
+        },
+        "createdById": {
+          "name": "createdById",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "createdAt": {
+          "name": "createdAt",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "SpQuote_contactId_Contact_id_fk": {
+          "name": "SpQuote_contactId_Contact_id_fk",
+          "tableFrom": "SpQuote",
+          "tableTo": "Contact",
+          "columnsFrom": [
+            "contactId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "SpQuote_createdById_User_id_fk": {
+          "name": "SpQuote_createdById_User_id_fk",
+          "tableFrom": "SpQuote",
+          "tableTo": "User",
+          "columnsFrom": [
+            "createdById"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.SpRecurringOrder": {
+      "name": "SpRecurringOrder",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "contactId": {
+          "name": "contactId",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "frequency": {
+          "name": "frequency",
+          "type": "RecurringFrequency",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "nextOrderDate": {
+          "name": "nextOrderDate",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "status": {
+          "name": "status",
+          "type": "RecurringOrderStatus",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "items": {
+          "name": "items",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "total": {
+          "name": "total",
+          "type": "numeric(65, 30)",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "SpRecurringOrder_contactId_Contact_id_fk": {
+          "name": "SpRecurringOrder_contactId_Contact_id_fk",
+          "tableFrom": "SpRecurringOrder",
+          "tableTo": "Contact",
+          "columnsFrom": [
+            "contactId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.SpSaleItem": {
+      "name": "SpSaleItem",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "saleId": {
+          "name": "saleId",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "itemId": {
+          "name": "itemId",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "itemName": {
+          "name": "itemName",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "quantity": {
+          "name": "quantity",
+          "type": "numeric(65, 30)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "unitPrice": {
+          "name": "unitPrice",
+          "type": "numeric(65, 30)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "total": {
+          "name": "total",
+          "type": "numeric(65, 30)",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "SpSaleItem_saleId_SpSale_id_fk": {
+          "name": "SpSaleItem_saleId_SpSale_id_fk",
+          "tableFrom": "SpSaleItem",
+          "tableTo": "SpSale",
+          "columnsFrom": [
+            "saleId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "SpSaleItem_itemId_Item_id_fk": {
+          "name": "SpSaleItem_itemId_Item_id_fk",
+          "tableFrom": "SpSaleItem",
+          "tableTo": "Item",
+          "columnsFrom": [
+            "itemId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.SpSale": {
+      "name": "SpSale",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "contactId": {
+          "name": "contactId",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "customerName": {
+          "name": "customerName",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "saleDate": {
+          "name": "saleDate",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "dueDate": {
+          "name": "dueDate",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "subtotal": {
+          "name": "subtotal",
+          "type": "numeric(65, 30)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "tax": {
+          "name": "tax",
+          "type": "numeric(65, 30)",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'0'"
+        },
+        "total": {
+          "name": "total",
+          "type": "numeric(65, 30)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "amountPaid": {
+          "name": "amountPaid",
+          "type": "numeric(65, 30)",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'0'"
+        },
+        "status": {
+          "name": "status",
+          "type": "SalesStatus",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "notes": {
+          "name": "notes",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "outletId": {
+          "name": "outletId",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "deliveryMethod": {
+          "name": "deliveryMethod",
+          "type": "DeliveryMethod",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'DELIVERY'"
+        },
+        "createdById": {
+          "name": "createdById",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "createdAt": {
+          "name": "createdAt",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "SpSale_contactId_Contact_id_fk": {
+          "name": "SpSale_contactId_Contact_id_fk",
+          "tableFrom": "SpSale",
+          "tableTo": "Contact",
+          "columnsFrom": [
+            "contactId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "SpSale_outletId_Outlet_id_fk": {
+          "name": "SpSale_outletId_Outlet_id_fk",
+          "tableFrom": "SpSale",
+          "tableTo": "Outlet",
+          "columnsFrom": [
+            "outletId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "SpSale_createdById_User_id_fk": {
+          "name": "SpSale_createdById_User_id_fk",
+          "tableFrom": "SpSale",
+          "tableTo": "User",
+          "columnsFrom": [
+            "createdById"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.TaskExtension": {
+      "name": "TaskExtension",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "taskId": {
+          "name": "taskId",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "previousDate": {
+          "name": "previousDate",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "newDate": {
+          "name": "newDate",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "reason": {
+          "name": "reason",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "userId": {
+          "name": "userId",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "createdAt": {
+          "name": "createdAt",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "TaskExtension_taskId_Task_id_fk": {
+          "name": "TaskExtension_taskId_Task_id_fk",
+          "tableFrom": "TaskExtension",
+          "tableTo": "Task",
+          "columnsFrom": [
+            "taskId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "TaskExtension_userId_User_id_fk": {
+          "name": "TaskExtension_userId_User_id_fk",
+          "tableFrom": "TaskExtension",
+          "tableTo": "User",
+          "columnsFrom": [
+            "userId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.TaskParticipant": {
+      "name": "TaskParticipant",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "taskId": {
+          "name": "taskId",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "userId": {
+          "name": "userId",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "role": {
+          "name": "role",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "createdAt": {
+          "name": "createdAt",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "TaskParticipant_taskId_Task_id_fk": {
+          "name": "TaskParticipant_taskId_Task_id_fk",
+          "tableFrom": "TaskParticipant",
+          "tableTo": "Task",
+          "columnsFrom": [
+            "taskId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "TaskParticipant_userId_User_id_fk": {
+          "name": "TaskParticipant_userId_User_id_fk",
+          "tableFrom": "TaskParticipant",
+          "tableTo": "User",
+          "columnsFrom": [
+            "userId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.TaskStage": {
+      "name": "TaskStage",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "color": {
+          "name": "color",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'#808080'"
+        },
+        "order": {
+          "name": "order",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
+        "createdAt": {
+          "name": "createdAt",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updatedAt": {
+          "name": "updatedAt",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.Task": {
+      "name": "Task",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "uniqueNumber": {
+          "name": "uniqueNumber",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "title": {
+          "name": "title",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "description": {
+          "name": "description",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "status": {
+          "name": "status",
+          "type": "TaskStatus",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'TODO'"
+        },
+        "assigneeId": {
+          "name": "assigneeId",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "parentId": {
+          "name": "parentId",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "teamId": {
+          "name": "teamId",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "definitionOfDone": {
+          "name": "definitionOfDone",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "isTemplate": {
+          "name": "isTemplate",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
+        "stageId": {
+          "name": "stageId",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "startDate": {
+          "name": "startDate",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "dueDate": {
+          "name": "dueDate",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "originalDueDate": {
+          "name": "originalDueDate",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "estimatedDuration": {
+          "name": "estimatedDuration",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "recurrenceInterval": {
+          "name": "recurrenceInterval",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "nextRun": {
+          "name": "nextRun",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "createdAt": {
+          "name": "createdAt",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updatedAt": {
+          "name": "updatedAt",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "Task_assigneeId_User_id_fk": {
+          "name": "Task_assigneeId_User_id_fk",
+          "tableFrom": "Task",
+          "tableTo": "User",
+          "columnsFrom": [
+            "assigneeId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "Task_teamId_Team_id_fk": {
+          "name": "Task_teamId_Team_id_fk",
+          "tableFrom": "Task",
+          "tableTo": "Team",
+          "columnsFrom": [
+            "teamId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "Task_stageId_TaskStage_id_fk": {
+          "name": "Task_stageId_TaskStage_id_fk",
+          "tableFrom": "Task",
+          "tableTo": "TaskStage",
+          "columnsFrom": [
+            "stageId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "Task_parentId_fkey": {
+          "name": "Task_parentId_fkey",
+          "tableFrom": "Task",
+          "tableTo": "Task",
+          "columnsFrom": [
+            "parentId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "Task_uniqueNumber_unique": {
+          "name": "Task_uniqueNumber_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "uniqueNumber"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.tax_rules": {
+      "name": "tax_rules",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "description": {
+          "name": "description",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "is_active": {
+          "name": "is_active",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": false,
+          "default": true
+        },
+        "is_default": {
+          "name": "is_default",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": false,
+          "default": false
+        },
+        "rules": {
+          "name": "rules",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.TeamMember": {
+      "name": "TeamMember",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "teamId": {
+          "name": "teamId",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "userId": {
+          "name": "userId",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "role": {
+          "name": "role",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "joinedAt": {
+          "name": "joinedAt",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "TeamMember_teamId_Team_id_fk": {
+          "name": "TeamMember_teamId_Team_id_fk",
+          "tableFrom": "TeamMember",
+          "tableTo": "Team",
+          "columnsFrom": [
+            "teamId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "TeamMember_userId_User_id_fk": {
+          "name": "TeamMember_userId_User_id_fk",
+          "tableFrom": "TeamMember",
+          "tableTo": "User",
+          "columnsFrom": [
+            "userId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.Team": {
+      "name": "Team",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "description": {
+          "name": "description",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "type": {
+          "name": "type",
+          "type": "TeamType",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'TEAM'"
+        },
+        "createdAt": {
+          "name": "createdAt",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updatedAt": {
+          "name": "updatedAt",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.TransactionPayment": {
+      "name": "TransactionPayment",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "transactionId": {
+          "name": "transactionId",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "paymentMethodCode": {
+          "name": "paymentMethodCode",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "amount": {
+          "name": "amount",
+          "type": "numeric(65, 30)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "accountId": {
+          "name": "accountId",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "reference": {
+          "name": "reference",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "createdAt": {
+          "name": "createdAt",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "TransactionPayment_transactionId_PosTransaction_id_fk": {
+          "name": "TransactionPayment_transactionId_PosTransaction_id_fk",
+          "tableFrom": "TransactionPayment",
+          "tableTo": "PosTransaction",
+          "columnsFrom": [
+            "transactionId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "TransactionPayment_accountId_Account_id_fk": {
+          "name": "TransactionPayment_accountId_Account_id_fk",
+          "tableFrom": "TransactionPayment",
+          "tableTo": "Account",
+          "columnsFrom": [
+            "accountId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.Transaction": {
+      "name": "Transaction",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "date": {
+          "name": "date",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "description": {
+          "name": "description",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "reference": {
+          "name": "reference",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "status": {
+          "name": "status",
+          "type": "JournalEntryStatus",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'POSTED'"
+        },
+        "metadata": {
+          "name": "metadata",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "createdAt": {
+          "name": "createdAt",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updatedAt": {
+          "name": "updatedAt",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.User": {
+      "name": "User",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "email": {
+          "name": "email",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "password": {
+          "name": "password",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "image": {
+          "name": "image",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "role": {
+          "name": "role",
+          "type": "Role",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'USER'"
+        },
+        "permissions": {
+          "name": "permissions",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "'[]'::jsonb"
+        },
+        "teamId": {
+          "name": "teamId",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "outletId": {
+          "name": "outletId",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "createdAt": {
+          "name": "createdAt",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updatedAt": {
+          "name": "updatedAt",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "User_teamId_Team_id_fk": {
+          "name": "User_teamId_Team_id_fk",
+          "tableFrom": "User",
+          "tableTo": "Team",
+          "columnsFrom": [
+            "teamId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "User_outletId_Outlet_id_fk": {
+          "name": "User_outletId_Outlet_id_fk",
+          "tableFrom": "User",
+          "tableTo": "Outlet",
+          "columnsFrom": [
+            "outletId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "User_email_unique": {
+          "name": "User_email_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "email"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.VendorLedgerEntry": {
+      "name": "VendorLedgerEntry",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "contactId": {
+          "name": "contactId",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "requestOrderId": {
+          "name": "requestOrderId",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "expenseId": {
+          "name": "expenseId",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "entryDate": {
+          "name": "entryDate",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "description": {
+          "name": "description",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "debit": {
+          "name": "debit",
+          "type": "numeric(65, 30)",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "'0'"
+        },
+        "credit": {
+          "name": "credit",
+          "type": "numeric(65, 30)",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "'0'"
+        },
+        "balanceAfter": {
+          "name": "balanceAfter",
+          "type": "numeric(65, 30)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "createdAt": {
+          "name": "createdAt",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "VendorLedgerEntry_contactId_Contact_id_fk": {
+          "name": "VendorLedgerEntry_contactId_Contact_id_fk",
+          "tableFrom": "VendorLedgerEntry",
+          "tableTo": "Contact",
+          "columnsFrom": [
+            "contactId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "VendorLedgerEntry_requestOrderId_RequestOrder_id_fk": {
+          "name": "VendorLedgerEntry_requestOrderId_RequestOrder_id_fk",
+          "tableFrom": "VendorLedgerEntry",
+          "tableTo": "RequestOrder",
+          "columnsFrom": [
+            "requestOrderId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.VerificationToken": {
+      "name": "VerificationToken",
+      "schema": "",
+      "columns": {
+        "identifier": {
+          "name": "identifier",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "token": {
+          "name": "token",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "expires": {
+          "name": "expires",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {
+        "VerificationToken_identifier_token_pk": {
+          "name": "VerificationToken_identifier_token_pk",
+          "columns": [
+            "identifier",
+            "token"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    }
+  },
+  "enums": {
+    "public.contact_type": {
+      "name": "contact_type",
+      "schema": "public",
+      "values": [
+        "CUSTOMER",
+        "VENDOR",
+        "BOTH"
+      ]
+    },
+    "public.loyalty_log_type": {
+      "name": "loyalty_log_type",
+      "schema": "public",
+      "values": [
+        "EARN",
+        "REDEEM",
+        "ADJUSTMENT"
+      ]
+    },
+    "public.AccountType": {
+      "name": "AccountType",
+      "schema": "public",
+      "values": [
+        "ASSET",
+        "LIABILITY",
+        "EQUITY",
+        "INCOME",
+        "EXPENSE"
+      ]
+    },
+    "public.AdjustmentType": {
+      "name": "AdjustmentType",
+      "schema": "public",
+      "values": [
+        "DAMAGE",
+        "THEFT",
+        "EXPIRED",
+        "CORRECTION",
+        "OTHER"
+      ]
+    },
+    "public.AppraisalStatus": {
+      "name": "AppraisalStatus",
+      "schema": "public",
+      "values": [
+        "DRAFT",
+        "PENDING_CERTIFICATION",
+        "PENDING_APPROVAL",
+        "APPROVED",
+        "REJECTED"
+      ]
+    },
+    "public.BeneficiaryStatus": {
+      "name": "BeneficiaryStatus",
+      "schema": "public",
+      "values": [
+        "PENDING",
+        "PAID"
+      ]
+    },
+    "public.DeliveryMethod": {
+      "name": "DeliveryMethod",
+      "schema": "public",
+      "values": [
+        "DELIVERY",
+        "PICKUP"
+      ]
+    },
+    "public.DiscountType": {
+      "name": "DiscountType",
+      "schema": "public",
+      "values": [
+        "PERCENTAGE",
+        "FIXED"
+      ]
+    },
+    "public.DispatchStatus": {
+      "name": "DispatchStatus",
+      "schema": "public",
+      "values": [
+        "PENDING",
+        "DISPATCHED",
+        "PARTIALLY_DELIVERED",
+        "DELIVERED",
+        "CANCELLED"
+      ]
+    },
+    "public.EmploymentType": {
+      "name": "EmploymentType",
+      "schema": "public",
+      "values": [
+        "FULL_TIME",
+        "CONTRACT",
+        "INTERN"
+      ]
+    },
+    "public.ExpenseStatus": {
+      "name": "ExpenseStatus",
+      "schema": "public",
+      "values": [
+        "PENDING",
+        "CERTIFIED",
+        "APPROVED",
+        "DISBURSED",
+        "REJECTED",
+        "PROCESSING_PAYMENT",
+        "PAYMENT_FAILED",
+        "PARTIALLY_PAID"
+      ]
+    },
+    "public.HaulagePaymentStatus": {
+      "name": "HaulagePaymentStatus",
+      "schema": "public",
+      "values": [
+        "PENDING",
+        "PAID"
+      ]
+    },
+    "public.ItemType": {
+      "name": "ItemType",
+      "schema": "public",
+      "values": [
+        "RESALE",
+        "INTERNAL_USE",
+        "SERVICE",
+        "MANUFACTURED",
+        "RAW_MATERIAL"
+      ]
+    },
+    "public.JournalEntryStatus": {
+      "name": "JournalEntryStatus",
+      "schema": "public",
+      "values": [
+        "DRAFT",
+        "POSTED"
+      ]
+    },
+    "public.LeaveStatus": {
+      "name": "LeaveStatus",
+      "schema": "public",
+      "values": [
+        "DRAFT",
+        "PENDING_CERTIFICATION",
+        "PENDING_APPROVAL",
+        "APPROVED",
+        "REJECTED"
+      ]
+    },
+    "public.LeaveType": {
+      "name": "LeaveType",
+      "schema": "public",
+      "values": [
+        "ANNUAL",
+        "SICK",
+        "MATERNITY",
+        "PATERNITY",
+        "UNPAID",
+        "CASUAL"
+      ]
+    },
+    "public.PaymentFrequency": {
+      "name": "PaymentFrequency",
+      "schema": "public",
+      "values": [
+        "MONTHLY",
+        "WEEKLY",
+        "BI_WEEKLY"
+      ]
+    },
+    "public.PayrollStatus": {
+      "name": "PayrollStatus",
+      "schema": "public",
+      "values": [
+        "DRAFT",
+        "PENDING_CERTIFICATION",
+        "PENDING_APPROVAL",
+        "APPROVED",
+        "PAID"
+      ]
+    },
+    "public.ProfileChangeStatus": {
+      "name": "ProfileChangeStatus",
+      "schema": "public",
+      "values": [
+        "PENDING_CERTIFICATION",
+        "PENDING_APPROVAL",
+        "APPROVED",
+        "REJECTED"
+      ]
+    },
+    "public.QuoteStatus": {
+      "name": "QuoteStatus",
+      "schema": "public",
+      "values": [
+        "DRAFT",
+        "SENT",
+        "ACCEPTED",
+        "REJECTED",
+        "CONVERTED",
+        "EXPIRED"
+      ]
+    },
+    "public.RecurringFrequency": {
+      "name": "RecurringFrequency",
+      "schema": "public",
+      "values": [
+        "WEEKLY",
+        "MONTHLY"
+      ]
+    },
+    "public.RecurringOrderStatus": {
+      "name": "RecurringOrderStatus",
+      "schema": "public",
+      "values": [
+        "ACTIVE",
+        "PAUSED"
+      ]
+    },
+    "public.RequestOrderStatus": {
+      "name": "RequestOrderStatus",
+      "schema": "public",
+      "values": [
+        "PENDING_APPROVAL",
+        "APPROVED_FOR_PAYMENT",
+        "DISBURSED",
+        "PARTIALLY_RECEIVED",
+        "GOODS_RECEIVED",
+        "CANCELLED"
+      ]
+    },
+    "public.Role": {
+      "name": "Role",
+      "schema": "public",
+      "values": [
+        "ADMIN",
+        "MANAGER",
+        "ACCOUNTANT",
+        "CASHIER",
+        "USER"
+      ]
+    },
+    "public.SalesStatus": {
+      "name": "SalesStatus",
+      "schema": "public",
+      "values": [
+        "AWAITING_CONFIRMATION",
+        "CONFIRMED",
+        "PAID",
+        "OVERDUE",
+        "CANCELLED"
+      ]
+    },
+    "public.TaskStatus": {
+      "name": "TaskStatus",
+      "schema": "public",
+      "values": [
+        "TODO",
+        "IN_PROGRESS",
+        "DONE",
+        "CERTIFIED",
+        "APPROVED"
+      ]
+    },
+    "public.TaxType": {
+      "name": "TaxType",
+      "schema": "public",
+      "values": [
+        "INCLUSIVE",
+        "EXCLUSIVE"
+      ]
+    },
+    "public.TeamType": {
+      "name": "TeamType",
+      "schema": "public",
+      "values": [
+        "TEAM",
+        "DEPARTMENT",
+        "UNIT"
+      ]
+    },
+    "public.TransactionDirection": {
+      "name": "TransactionDirection",
+      "schema": "public",
+      "values": [
+        "DEBIT",
+        "CREDIT"
+      ]
+    },
+    "public.TransferStatus": {
+      "name": "TransferStatus",
+      "schema": "public",
+      "values": [
+        "PENDING",
+        "IN_TRANSIT",
+        "PARTIALLY_COMPLETED",
+        "COMPLETED",
+        "CANCELLED"
+      ]
+    },
+    "public.TransferType": {
+      "name": "TransferType",
+      "schema": "public",
+      "values": [
+        "PICKUP",
+        "DISPATCH"
+      ]
+    }
+  },
+  "schemas": {},
+  "sequences": {},
+  "roles": {},
+  "policies": {},
+  "views": {},
+  "_meta": {
+    "columns": {},
+    "schemas": {},
+    "tables": {}
+  }
+}

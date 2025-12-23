@@ -7,6 +7,8 @@ import { approvePayrollRunAction, certifyPayrollRun, rejectPayrollRun, submitPay
 import { useToast } from "@/hooks/use-toast";
 import { Check, X, ShieldCheck, Send } from "lucide-react";
 
+import { Protect } from "@/components/auth/Protect";
+
 export function SubmitPayrollButton({ runId }: { runId: string }) {
     const { toast } = useToast();
     const [loading, setLoading] = useState(false);
@@ -24,13 +26,15 @@ export function SubmitPayrollButton({ runId }: { runId: string }) {
     }
 
     return (
-        <Button onClick={handleSubmit} disabled={loading}>
-            {loading ? "..." : (
-                <>
-                    <Send className="mr-2 h-4 w-4" /> Submit for Review
-                </>
-            )}
-        </Button>
+        <Protect roles={["ADMIN", "MANAGER"]}>
+            <Button onClick={handleSubmit} disabled={loading}>
+                {loading ? "..." : (
+                    <>
+                        <Send className="mr-2 h-4 w-4" /> Submit for Review
+                    </>
+                )}
+            </Button>
+        </Protect>
     );
 }
 
@@ -51,13 +55,15 @@ export function CertifyPayrollButton({ runId }: { runId: string }) {
     }
 
     return (
-        <Button onClick={handleCertify} disabled={loading} className="bg-orange-600 hover:bg-orange-700">
-            {loading ? "..." : (
-                <>
-                    <ShieldCheck className="mr-2 h-4 w-4" /> Certify Run
-                </>
-            )}
-        </Button>
+        <Protect roles={["ADMIN", "MANAGER"]}>
+            <Button onClick={handleCertify} disabled={loading} className="bg-orange-600 hover:bg-orange-700">
+                {loading ? "..." : (
+                    <>
+                        <ShieldCheck className="mr-2 h-4 w-4" /> Certify Run
+                    </>
+                )}
+            </Button>
+        </Protect>
     );
 }
 
@@ -78,13 +84,15 @@ export function ApprovePayrollButton({ runId }: { runId: string }) {
     }
 
     return (
-        <Button onClick={handleApprove} disabled={loading} className="bg-green-600 hover:bg-green-700">
-            {loading ? "..." : (
-                <>
-                    <Check className="mr-2 h-4 w-4" /> Approve & Process
-                </>
-            )}
-        </Button>
+        <Protect roles={["ADMIN"]}>
+            <Button onClick={handleApprove} disabled={loading} className="bg-green-600 hover:bg-green-700">
+                {loading ? "..." : (
+                    <>
+                        <Check className="mr-2 h-4 w-4" /> Approve & Process
+                    </>
+                )}
+            </Button>
+        </Protect>
     );
 }
 
@@ -105,12 +113,14 @@ export function RejectPayrollButton({ runId }: { runId: string }) {
     }
 
     return (
-        <Button variant="destructive" onClick={handleReject} disabled={loading}>
-            {loading ? "..." : (
-                <>
-                    <X className="mr-2 h-4 w-4" /> Reject
-                </>
-            )}
-        </Button>
+        <Protect roles={["ADMIN", "MANAGER"]}>
+            <Button variant="destructive" onClick={handleReject} disabled={loading}>
+                {loading ? "..." : (
+                    <>
+                        <X className="mr-2 h-4 w-4" /> Reject
+                    </>
+                )}
+            </Button>
+        </Protect>
     );
 }

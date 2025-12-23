@@ -26,41 +26,65 @@ interface UserPermissionsSelectProps {
 
 const PERMISSION_GROUPS = [
     {
-        category: "Finance & Expenses",
+        category: "POS & Sales",
         permissions: [
-            { id: "EXPENSE_CREATE", label: "Create Expenses" },
-            { id: "EXPENSE_APPROVE", label: "Approve Expenses" },
-            { id: "EXPENSE_PAY", label: "Disburse Funds" },
+            { id: "POS_ACCESS", label: "Access POS Terminal" },
+            { id: "POS_MANAGE_SHIFT", label: "Manage Shifts (Open/Close)" },
+            { id: "PROCESS_SALE", label: "Process Sales" },
+            { id: "REFUND_SALE", label: "Process Refunds" },
+            { id: "VOID_TRANSACTION", label: "Void Transactions" },
+            { id: "APPLY_DISCOUNT", label: "Apply Discounts" },
         ]
     },
     {
-        category: "HR Management",
+        category: "Inventory & Stock",
         permissions: [
-            { id: "HR_MANAGE_EMPLOYEES", label: "Manage Employees" },
+            { id: "INVENTORY_VIEW", label: "View Inventory Dashboard" },
+            { id: "INVENTORY_MANAGE_ITEMS", label: "Create/Edit Products" },
+            { id: "INVENTORY_MANAGE_STOCK", label: "Manage Stock (GRN, Transfers)" },
+            { id: "VIEW_COST_PRICE", label: "View Cost Prices" },
+            { id: "MANAGE_INVENTORY", label: "Full Inventory Access (Legacy)" },
+        ]
+    },
+    {
+        category: "Finance & Reports",
+        permissions: [
+            { id: "VIEW_FINANCE", label: "View Financial Statements (P&L, Balance Sheet)" },
+            { id: "MANAGE_ACCOUNTS", label: "Manage Chart of Accounts & Journals" },
+            { id: "VIEW_REPORTS", label: "View General Reports" },
+            { id: "EXPENSE_CREATE", label: "Create Expenses" },
+            { id: "EXPENSE_APPROVE", label: "Approve Expenses" },
+            { id: "EXPENSE_PAY", label: "Disburse Expense Funds" },
+        ]
+    },
+    {
+        category: "HR & Payroll",
+        permissions: [
+            { id: "MANAGE_EMPLOYEES", label: "Manage Employees" },
+            { id: "HR_MANAGE_TEAMS", label: "Manage Teams/Departments" },
+            { id: "HR_VIEW_SENSITIVE", label: "View Salaries & Bank Details" },
+            { id: "VIEW_PAYROLL", label: "View Payroll Reports" },
+            { id: "PAYROLL_CREATE", label: "Create/Run Payroll" },
+            { id: "PAYROLL_APPROVE", label: "Approve Payroll Runs" },
+            { id: "PAYROLL_PAY", label: "Disburse Salaries" },
             { id: "HR_LEAVE_APPROVE", label: "Approve Leaves" },
             { id: "HR_APPRAISAL_REVIEW", label: "Review Appraisals" },
         ]
     },
     {
-        category: "Payroll",
+        category: "Task Management",
         permissions: [
-            { id: "HR_PAYROLL_CREATE", label: "Create Payroll Runs" },
-            { id: "HR_CERTIFIER", label: "Certify Payroll" },
-            { id: "HR_APPROVER", label: "Approve Payroll" },
-        ]
-    },
-    {
-        category: "Tasks & Projects",
-        permissions: [
+            { id: "TASK_VIEW", label: "View Tasks" },
             { id: "TASK_CREATE", label: "Create Tasks" },
-            { id: "TASK_MANAGE_ALL", label: "Manage All Tasks" },
+            { id: "TASK_ASSIGN", label: "Assign Tasks" },
+            { id: "TASK_STAGE_MANAGE", label: "Manage Task Stages" },
         ]
     },
     {
-        category: "System Settings",
+        category: "System Administration",
         permissions: [
-            { id: "SETTINGS_MANAGE_USERS", label: "Manage Users" },
-            { id: "SETTINGS_MANAGE_TEAMS", label: "Manage Teams" },
+            { id: "MANAGE_USERS", label: "Manage Users & Permissions" },
+            { id: "MANAGE_SETTINGS", label: "Manage System Settings" },
         ]
     }
 ];

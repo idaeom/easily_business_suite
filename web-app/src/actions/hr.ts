@@ -4,7 +4,7 @@
 import { getDb } from "@/db";
 import { employeeProfiles, users, teams } from "@/db/schema";
 import { eq, desc } from "drizzle-orm";
-import { getAuthenticatedUser } from "@/lib/auth";
+import { getAuthenticatedUser, verifyPermission } from "@/lib/auth";
 import { revalidatePath } from "next/cache";
 
 export type EmployeeInput = {
@@ -26,8 +26,7 @@ export type EmployeeInput = {
 };
 
 export async function getEmployees() {
-    const user = await getAuthenticatedUser();
-    if (!user) throw new Error("Unauthorized");
+    const user = await verifyPermission("MANAGE_EMPLOYEES");
     const db = await getDb();
 
     // Fetch Users with their Employee Profile AND Team
@@ -46,8 +45,7 @@ export async function getEmployees() {
 }
 
 export async function getUsersForOnboarding() {
-    const user = await getAuthenticatedUser();
-    if (!user) throw new Error("Unauthorized");
+    const user = await verifyPermission("MANAGE_EMPLOYEES");
     const db = await getDb();
 
     // Fetch Users who DO NOT have an Employee Profile
@@ -78,8 +76,7 @@ export async function getEmployeeById(id: string) { // id is userId
 // Ensure every "User" can be an "Employee"
 // This creates the profile if it doesn't exist
 export async function createEmployeeProfile(data: EmployeeInput) {
-    const user = await getAuthenticatedUser();
-    if (!user) throw new Error("Unauthorized");
+    const user = await verifyPermission("MANAGE_EMPLOYEES");
     const db = await getDb();
 
     // Check if exists
@@ -122,8 +119,7 @@ export async function createEmployeeProfile(data: EmployeeInput) {
 }
 
 export async function updateEmployeeProfile(userId: string, data: Partial<EmployeeInput>) {
-    const user = await getAuthenticatedUser();
-    if (!user) throw new Error("Unauthorized");
+    const user = await verifyPermission("MANAGE_EMPLOYEES");
     const db = await getDb();
 
     // Transform numbers to strings for Decimal type

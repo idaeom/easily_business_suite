@@ -10,7 +10,7 @@ import {
 
 import React from 'react';
 import { motion } from "framer-motion";
-import { signOut } from "next-auth/react";
+import { signOut, useSession } from "next-auth/react";
 
 // 1. Management
 const managementItems = [
@@ -105,6 +105,42 @@ export function Sidebar() {
         </div>
     );
 
+    const { data: session } = useSession(); // Import useSession first!
+    const userRole = session?.user?.role;
+
+    // Filter Items based on Role
+    // ADMIN: All
+    // MANAGER: HR, Ops, Tasks, POS
+    // ACCOUNTANT: Finance, Revenue
+    // CASHIER: POS, Tasks
+    // USER: Tasks
+
+    const filterItems = (items: any[]) => {
+        if (!userRole) return [];
+        if (userRole === "ADMIN") return items;
+
+        return items.filter(item => {
+            // Define access logic per module/path
+            if (item.href.startsWith("/dashboard/finance")) return userRole === "ACCOUNTANT";
+            if (item.href.startsWith("/dashboard/business/revenue")) return userRole === "ACCOUNTANT";
+            if (item.href.startsWith("/dashboard/hr")) return userRole === "MANAGER";
+            if (item.href.startsWith("/dashboard/business/operations")) return userRole === "MANAGER";
+
+            // POS Access
+            if (item.href.startsWith("/dashboard/business/pos")) return ["MANAGER", "CASHIER"].includes(userRole);
+
+            // Core Business Items (Sales/Inventory) - Let's say Managers + Accountants need View? 
+            // For now, restrict Sales/Inventory to Managers/Accountants/Admins
+            if (item.href.includes("business")) {
+                if (userRole === "CASHIER" && item.href.includes("pos")) return true;
+                return ["MANAGER", "ACCOUNTANT"].includes(userRole);
+            }
+
+            // Default (Tasks, Dashboard) available to all
+            return true;
+        });
+    };
+
     return (
         <motion.div
             className="bg-slate-950 text-white h-screen flex flex-col border-r border-slate-800 z-50 shadow-2xl"
@@ -115,6 +151,7 @@ export function Sidebar() {
             onMouseLeave={() => setIsHovered(false)}
         >
             <div className="p-4 flex items-center h-20 overflow-hidden relative">
+                {/* Logo content */}
                 <div className={cn("flex items-center gap-3 transition-all duration-300", isHovered ? "opacity-100" : "opacity-0")}>
                     <div className="min-w-10 h-10 rounded-lg bg-gradient-to-tr from-blue-500 to-purple-600 flex items-center justify-center font-bold text-white text-xl">
                         E
@@ -127,7 +164,6 @@ export function Sidebar() {
                     </div>
                 </div>
 
-                {/* Logo when collapsed */}
                 {!isHovered && (
                     <div className="absolute left-4 top-5 w-12 h-10 rounded-lg bg-gradient-to-tr from-blue-500 to-purple-600 flex items-center justify-center font-bold text-white text-2xl shadow-lg">
                         E
@@ -136,35 +172,38 @@ export function Sidebar() {
             </div>
 
             <nav className="flex-1 overflow-y-auto py-2 scrollbar-none">
-                <NavGroup items={managementItems} title="Overview" />
-                <NavGroup items={commerceItems} title="Commerce Pro" />
-                <NavGroup items={financeItems} title="Finance Pro" />
-                <NavGroup items={hrItems} title="HR Pro" />
+                <NavGroup items={filterItems(managementItems)} title="Overview" />
+                <NavGroup items={filterItems(commerceItems)} title="Commerce Pro" />
+                <NavGroup items={filterItems(financeItems)} title="Finance Pro" />
+                <NavGroup items={filterItems(hrItems)} title="HR Pro" />
 
-                <div className="mt-4 px-2">
-                    <Link
-                        href="/dashboard/settings"
-                        className={cn(
-                            "flex items-center gap-3 px-4 py-3 mx-2 rounded-lg transition-all text-sm text-slate-400 hover:text-white hover:bg-white/5",
-                            pathname.startsWith("/dashboard/settings") && "bg-white/5 text-white",
-                            !isHovered && "justify-center px-2"
-                        )}
-                        title={!isHovered ? "Settings" : undefined}
-                    >
-                        <div className="relative z-10 flex items-center gap-3">
-                            <Settings size={20} className="shrink-0" />
-                            {isHovered && (
-                                <motion.span
-                                    initial={{ opacity: 0 }}
-                                    animate={{ opacity: 1 }}
-                                    className="font-medium whitespace-nowrap"
-                                >
-                                    Settings
-                                </motion.span>
+                {/* Settings Link - Only Admin */}
+                {userRole === "ADMIN" && (
+                    <div className="mt-4 px-2">
+                        <Link
+                            href="/dashboard/settings"
+                            className={cn(
+                                "flex items-center gap-3 px-4 py-3 mx-2 rounded-lg transition-all text-sm text-slate-400 hover:text-white hover:bg-white/5",
+                                pathname.startsWith("/dashboard/settings") && "bg-white/5 text-white",
+                                !isHovered && "justify-center px-2"
                             )}
-                        </div>
-                    </Link>
-                </div>
+                            title={!isHovered ? "Settings" : undefined}
+                        >
+                            <div className="relative z-10 flex items-center gap-3">
+                                <Settings size={20} className="shrink-0" />
+                                {isHovered && (
+                                    <motion.span
+                                        initial={{ opacity: 0 }}
+                                        animate={{ opacity: 1 }}
+                                        className="font-medium whitespace-nowrap"
+                                    >
+                                        Settings
+                                    </motion.span>
+                                )}
+                            </div>
+                        </Link>
+                    </div>
+                )}
                 <div className="mt-2 px-2">
                     <button
                         onClick={() => signOut({ callbackUrl: "/login" })}

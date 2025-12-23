@@ -4,6 +4,7 @@ import { TaskContainer } from "@/components/TaskContainer";
 import { Pagination } from "@/components/Pagination";
 
 import { TaskFilters } from "@/components/TaskFilters";
+import { Protect } from "@/components/auth/Protect";
 
 export default async function TasksPage({ searchParams }: { searchParams: Promise<{ [key: string]: string | string[] | undefined }> }) {
     const params = await searchParams;
@@ -52,7 +53,9 @@ export default async function TasksPage({ searchParams }: { searchParams: Promis
                         Manage your projects and assignments.
                     </p>
                 </div>
-                <CreateTaskDialog templates={templates} />
+                <Protect permission="TASK_CREATE">
+                    <CreateTaskDialog templates={templates} />
+                </Protect>
             </div>
 
             <TaskFilters stages={stages} />
@@ -62,6 +65,6 @@ export default async function TasksPage({ searchParams }: { searchParams: Promis
             </div>
 
             <Pagination currentPage={page} totalItems={total} pageSize={limit} />
-        </div>
+        </div >
     );
 }

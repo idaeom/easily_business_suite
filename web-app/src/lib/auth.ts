@@ -52,7 +52,7 @@ export const authOptions: NextAuthOptions = {
                     id: user.id,
                     name: user.name,
                     email: user.email,
-                    role: user.role as "ADMIN" | "USER",
+                    role: user.role as "ADMIN" | "MANAGER" | "ACCOUNTANT" | "CASHIER" | "USER",
                     permissions: (user.permissions as string[]) || [],
                     image: user.image,
                     outletId: user.outletId || undefined
@@ -123,4 +123,37 @@ export async function getAuthenticatedUser() {
     const { getServerSession } = await import("next-auth");
     const session = await getServerSession(authOptions);
     return session?.user;
+}
+
+export async function verifyRole(allowedRoles: string[]) {
+    const user = await getAuthenticatedUser();
+
+    if (!user) {
+        throw new Error("Unauthorized: Please log in.");
+    }
+
+    if (!allowedRoles.includes(user.role)) {
+        throw new Error(`Forbidden: You do not have permission to access this resource. Required: ${allowedRoles.join(", ")}`);
+    }
+
+    return user;
+}
+
+export async function verifyPermission(requiredPermission: string) {
+    const user = await getAuthenticatedUser();
+
+    if (!user) {
+        throw new Error("Unauthorized: Please log in.");
+    }
+
+    // Admins have all permissions implicitly
+    if (user.role === "ADMIN") {
+        return user;
+    }
+
+    if (!user.permissions.includes(requiredPermission)) {
+        throw new Error(`Forbidden: Missing permission ${requiredPermission}`);
+    }
+
+    return user;
 }

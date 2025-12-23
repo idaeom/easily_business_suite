@@ -623,6 +623,7 @@ export const posShifts = pgTable("Shift", {
 
     verifiedCash: decimal("verifiedCash", { precision: 65, scale: 30 }),
     verifiedCard: decimal("verifiedCard", { precision: 65, scale: 30 }),
+    verifiedTransfer: decimal("verifiedTransfer", { precision: 65, scale: 30 }),
     isReconciled: boolean("isReconciled").default(false),
 
     notes: text("notes"),

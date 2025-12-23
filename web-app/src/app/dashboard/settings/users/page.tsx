@@ -1,82 +1,44 @@
+import { getUsers } from "@/actions/user-actions";
 import { getDb } from "@/db";
-import { users } from "@/db/schema";
-import { asc } from "drizzle-orm";
-import { Card, CardContent } from "@/components/ui/card";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { CreateUserDialog } from "@/components/CreateUserDialog";
+import { outlets } from "@/db/schema";
+import { InviteUserDialog } from "@/components/settings/InviteUserDialog";
+import { UsersTable } from "@/components/settings/UsersTable";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { verifyRole } from "@/lib/auth";
 
-import { teams } from "@/db/schema";
+export default async function UsersPage() {
+    // Only Admin can see this page (Double check, although Middleware handles it)
+    await verifyRole(["ADMIN"]);
 
-async function getUsers() {
+    const users = await getUsers();
     const db = await getDb();
-    return db.query.users.findMany({
-        orderBy: [asc(users.name)],
-        with: {
-            team: true, // Fetch assigned team
-        }
-    });
-}
-
-async function getTeams() {
-    const db = await getDb();
-    return db.query.teams.findMany({
-        orderBy: [asc(teams.name)],
-    });
-}
-
-import { getAuthenticatedUser } from "@/lib/auth";
-import { UserRoleSelect } from "@/components/UserRoleSelect";
-
-import { redirect } from "next/navigation";
-
-import { UserPermissionsSelect } from "@/components/UserPermissionsSelect";
-
-export default async function UsersPage(props: { searchParams: Promise<{ newUser?: string }> }) {
-    const searchParams = await props.searchParams;
-    const allUsers = await getUsers();
-    const allTeams = await getTeams();
-    const currentUser = await getAuthenticatedUser();
-
-    if (!currentUser) {
-        redirect("/login");
-    }
+    const allOutlets = await db.select({ id: outlets.id, name: outlets.name }).from(outlets);
 
     return (
         <div className="space-y-6">
             <div className="flex items-center justify-between">
-                <h1 className="text-3xl font-bold tracking-tight">User Management</h1>
-                <CreateUserDialog teams={allTeams} defaultOpen={searchParams?.newUser === 'true'} />
+                <div>
+                    <h2 className="text-3xl font-bold tracking-tight">User Management</h2>
+                    <p className="text-muted-foreground">
+                        Manage system access, roles, and permissions.
+                    </p>
+                </div>
+                <div className="flex items-center gap-2">
+                    <InviteUserDialog outlets={allOutlets} />
+                </div>
             </div>
 
-            <div className="grid gap-4">
-                {allUsers.map((user: any) => (
-                    <Card key={user.id}>
-                        <CardContent className="flex items-center justify-between p-6">
-                            <div className="flex items-center space-x-4">
-                                <Avatar>
-                                    <AvatarFallback>{user.name?.[0] || "U"}</AvatarFallback>
-                                </Avatar>
-                                <div>
-                                    <p className="text-sm font-medium leading-none">{user.name}</p>
-                                    <p className="text-sm text-muted-foreground">{user.email}</p>
-                                </div>
-                            </div>
-                            <div className="flex items-center space-x-2">
-                                <UserRoleSelect
-                                    userId={user.id}
-                                    currentRole={user.role}
-                                    currentUserId={currentUser.id}
-                                />
-                                <UserPermissionsSelect
-                                    userId={user.id}
-                                    currentPermissions={user.permissions || []}
-                                    currentUserId={currentUser.id}
-                                />
-                            </div>
-                        </CardContent>
-                    </Card>
-                ))}
-            </div>
+            <Card>
+                <CardHeader>
+                    <CardTitle>Users</CardTitle>
+                    <CardDescription>
+                        A list of all users authorized to access the system.
+                    </CardDescription>
+                </CardHeader>
+                <CardContent>
+                    <UsersTable users={users as any} outlets={allOutlets} />
+                </CardContent>
+            </Card>
         </div>
     );
 }

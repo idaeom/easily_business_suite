@@ -9,6 +9,14 @@ export default async function PosPage() {
     const user = await getAuthenticatedUser();
     if (!user) redirect("/login");
 
+    // Permission Check
+    const { verifyPermission } = await import("@/lib/auth");
+    try {
+        await verifyPermission("POS_ACCESS");
+    } catch {
+        redirect("/dashboard");
+    }
+
     const db = await getDb();
     const outlet = await db.query.outlets.findFirst();
 

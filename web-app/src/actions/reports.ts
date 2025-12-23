@@ -10,6 +10,11 @@ export async function getExpenseReports(
     endDate?: Date,
     categoryFilter?: string
 ) {
+    const { getAuthenticatedUser, verifyPermission } = await import("@/lib/auth");
+    const user = await getAuthenticatedUser();
+    if (!user) throw new Error("Unauthorized");
+    await verifyPermission("VIEW_REPORTS");
+
     const db = await getDb();
 
     // Build Where Clause
@@ -58,6 +63,60 @@ export async function getExpenseReports(
     return {
         monthlyChartData,
         categoryChartData
+    };
+}
+
+export async function getExpensesList(
+    page: number = 1,
+    limit: number = 10,
+    search?: string,
+    category?: string,
+    startDate?: Date,
+    endDate?: Date
+) {
+    const db = await getDb();
+    const { expenses, users } = await import("@/db/schema");
+    const { ilike, or, count } = await import("drizzle-orm");
+
+    const offset = (page - 1) * limit;
+
+    const whereClause = [];
+    if (startDate) whereClause.push(gte(expenses.incurredAt, startDate));
+    if (endDate) whereClause.push(lte(expenses.incurredAt, endDate));
+    if (category && category !== "all") whereClause.push(eq(expenses.category, category));
+    if (search) {
+        whereClause.push(or(
+            ilike(expenses.description, `%${search}%`),
+            ilike(expenses.payee, `%${search}%`)
+        ));
+    }
+
+    // Get Total Count
+    const totalResult = await db
+        .select({ count: count() })
+        .from(expenses)
+        .where(and(...whereClause));
+
+    const total = totalResult[0].count;
+
+    // Get Data
+    const data = await db.query.expenses.findMany({
+        where: and(...whereClause),
+        with: {
+            requester: true,
+            approver: true
+        },
+        orderBy: [desc(expenses.incurredAt)],
+        limit,
+        offset
+    });
+
+    return {
+        data,
+        total,
+        page,
+        limit,
+        totalPages: Math.ceil(total / limit)
     };
 }
 
@@ -184,6 +243,11 @@ export async function getPayrollReports(
     startDate?: Date,
     endDate?: Date
 ) {
+    const { getAuthenticatedUser, verifyPermission } = await import("@/lib/auth");
+    const user = await getAuthenticatedUser();
+    if (!user) throw new Error("Unauthorized");
+    await verifyPermission("VIEW_PAYROLL"); // Or VIEW_REPORTS? Using VIEW_PAYROLL for separation.
+
     const db = await getDb();
     const { payrollRuns, payrollItems, users, employeeProfiles } = await import("@/db/schema");
 
@@ -271,17 +335,28 @@ export async function getFinancialStatements(
     startDate?: Date,
     endDate: Date = new Date()
 ) {
+    const { getAuthenticatedUser, verifyPermission } = await import("@/lib/auth");
+    const user = await getAuthenticatedUser();
+    if (!user) throw new Error("Unauthorized");
+    await verifyPermission("VIEW_FINANCE");
+
     const db = await getDb();
     const { accounts, ledgerEntries, transactions } = await import("@/db/schema");
+    const { eq, and, gte, lte, sql } = await import("drizzle-orm");
 
     // 1. Fetch All Accounts
-    const allAccounts = await db.query.accounts.findMany();
+    const allAccounts = await db.query.accounts.findMany({
+        orderBy: [accounts.code]
+    });
 
     // 2. Helper to fetch aggregated stats with custom date filter
     const getStats = async (start: Date | undefined, end: Date | undefined) => {
         const dateConditions = [];
         if (start) dateConditions.push(gte(transactions.date, start));
         if (end) dateConditions.push(lte(transactions.date, end));
+
+        // Ensure we only look at POSTED transactions
+        dateConditions.push(eq(transactions.status, "POSTED"));
 
         const stats = await db
             .select({
@@ -304,97 +379,158 @@ export async function getFinancialStatements(
     // Balance Sheet: Cumulative (Everything -> endDate)
     const bsStats = await getStats(undefined, endDate);
 
+    // 4. Structure Definitions
+    const profitAndLoss = {
+        revenue: [] as any[],
+        cogs: [] as any[],
+        operatingExpenses: [] as any[],
+
+        totalRevenue: 0,
+        totalCogs: 0,
+        grossProfit: 0,
+        totalOperatingExpenses: 0,
+        netOperatingIncome: 0,
+        netProfit: 0 // (Same as NOI if no other income/tax logic yet)
+    };
+
     const balanceSheet = {
-        assets: [] as any[],
-        liabilities: [] as any[],
+        assets: {
+            current: [] as any[],
+            fixed: [] as any[],
+            totalCurrent: 0,
+            totalFixed: 0,
+            total: 0
+        },
+        liabilities: {
+            current: [] as any[],
+            longTerm: [] as any[],
+            totalCurrent: 0,
+            totalLongTerm: 0,
+            total: 0
+        },
         equity: [] as any[],
-        totalAssets: 0,
-        totalLiabilities: 0,
         totalEquity: 0
     };
 
-    const profitAndLoss = {
-        income: [] as any[],
-        expenses: [] as any[],
-        totalIncome: 0,
-        totalExpenses: 0,
-        netProfit: 0
-    };
-
+    // 5. Categorize Accounts
     for (const acc of allAccounts) {
-        // P&L Logic
-        if (acc.type === "INCOME" || acc.type === "EXPENSE") {
+        const codeStart = parseInt(acc.code);
+
+        // --- PROFIT & LOSS (Income + Expense Types) ---
+        if (["INCOME", "EXPENSE"].includes(acc.type)) {
             const stats = pnlStats.get(acc.id);
             const debits = Number(stats?.totalDebits || 0);
             const credits = Number(stats?.totalCredits || 0);
-            // Net Balance for Period
-            // Asset/Expense: Debit +, Credit -
-            // Liability/Income/Equity: Credit +, Debit -
+
+            // Determine Balance based on Normal Balance Side
+            // Revenue (Income): Credit - Debit (Normally Credit)
+            // Expense: Debit - Credit (Normally Debit)
 
             let balance = 0;
             if (acc.type === "INCOME") {
-                // Credit is positive for Income usually
-                balance = credits - debits;
-                if (balance !== 0) {
-                    profitAndLoss.income.push({ id: acc.id, name: acc.name, amount: Math.abs(balance) });
-                    profitAndLoss.totalIncome += Math.abs(balance);
-                }
+                balance = credits - debits; // Positive means we made money
             } else {
-                // Expense: Debit is positive
-                balance = debits - credits;
-                if (balance !== 0) {
-                    profitAndLoss.expenses.push({ id: acc.id, name: acc.name, amount: balance });
-                    profitAndLoss.totalExpenses += balance;
+                balance = debits - credits; // Positive means we spent money
+            }
+
+            if (balance !== 0) {
+                const item = { id: acc.id, name: acc.name, code: acc.code, amount: balance };
+
+                // Grouping Logic
+                // Revenue: 4000-4999
+                if (codeStart >= 4000 && codeStart <= 4999) {
+                    profitAndLoss.revenue.push(item);
+                    profitAndLoss.totalRevenue += balance;
+                }
+                // COGS: 5000-5999
+                else if (codeStart >= 5000 && codeStart <= 5999) {
+                    profitAndLoss.cogs.push(item);
+                    profitAndLoss.totalCogs += balance;
+                }
+                // Operating Expenses: 6000-8999
+                else if (codeStart >= 6000 && codeStart <= 8999) {
+                    profitAndLoss.operatingExpenses.push(item);
+                    profitAndLoss.totalOperatingExpenses += balance;
+                }
+                // Fallback (e.g. Uncategorized Expense)
+                else {
+                    profitAndLoss.operatingExpenses.push(item);
+                    profitAndLoss.totalOperatingExpenses += balance;
                 }
             }
         }
 
-        // Balance Sheet Logic
+        // --- BALANCE SHEET (Asset, Liability, Equity Types) ---
         else {
             const stats = bsStats.get(acc.id);
             const debits = Number(stats?.totalDebits || 0);
             const credits = Number(stats?.totalCredits || 0);
 
             let balance = 0;
+
             if (acc.type === "ASSET") {
-                balance = debits - credits;
+                balance = debits - credits; // Debit Normal
                 if (balance !== 0) {
-                    balanceSheet.assets.push({ id: acc.id, name: acc.name, amount: balance });
-                    balanceSheet.totalAssets += balance;
+                    const item = { id: acc.id, name: acc.name, code: acc.code, amount: balance };
+                    // Current Assets: 1000 - 1499
+                    if (codeStart >= 1000 && codeStart <= 1499) {
+                        balanceSheet.assets.current.push(item);
+                        balanceSheet.assets.totalCurrent += balance;
+                    }
+                    // Fixed Assets: 1500 - 1999
+                    else {
+                        balanceSheet.assets.fixed.push(item);
+                        balanceSheet.assets.totalFixed += balance;
+                    }
+                    balanceSheet.assets.total += balance;
                 }
-            } else if (acc.type === "LIABILITY") {
-                balance = credits - debits;
+            }
+            else if (acc.type === "LIABILITY") {
+                balance = credits - debits; // Credit Normal
                 if (balance !== 0) {
-                    balanceSheet.liabilities.push({ id: acc.id, name: acc.name, amount: Math.abs(balance) });
-                    balanceSheet.totalLiabilities += Math.abs(balance);
+                    const item = { id: acc.id, name: acc.name, code: acc.code, amount: balance };
+                    // Current Liabilities: 2000 - 2499
+                    if (codeStart >= 2000 && codeStart <= 2499) {
+                        balanceSheet.liabilities.current.push(item);
+                        balanceSheet.liabilities.totalCurrent += balance;
+                    }
+                    // Long Term: 2500+
+                    else {
+                        balanceSheet.liabilities.longTerm.push(item);
+                        balanceSheet.liabilities.totalLongTerm += balance;
+                    }
+                    balanceSheet.liabilities.total += balance;
                 }
-            } else if (acc.type === "EQUITY") {
-                balance = credits - debits;
+            }
+            else if (acc.type === "EQUITY") {
+                balance = credits - debits; // Credit Normal
                 if (balance !== 0) {
-                    balanceSheet.equity.push({ id: acc.id, name: acc.name, amount: Math.abs(balance) });
-                    balanceSheet.totalEquity += Math.abs(balance);
+                    balanceSheet.equity.push({ id: acc.id, name: acc.name, code: acc.code, amount: balance });
+                    balanceSheet.totalEquity += balance;
                 }
             }
         }
     }
 
-    // Dynamic Net Profit Calculation
-    profitAndLoss.netProfit = profitAndLoss.totalIncome - profitAndLoss.totalExpenses;
+    // 6. Calculated Metrics
+    profitAndLoss.grossProfit = profitAndLoss.totalRevenue - profitAndLoss.totalCogs;
+    profitAndLoss.netOperatingIncome = profitAndLoss.grossProfit - profitAndLoss.totalOperatingExpenses;
+    profitAndLoss.netProfit = profitAndLoss.netOperatingIncome; // Simplified for now
 
-    // Optional: Add Current Net Profit to Equity for the BS balancing?
-    // Users often expect Assets = Liab + Equity.
-    // If we only show Equity accounts, they won't sum up if we don't include Retained Earnings (Net Profit).
-    // Let's add it as a virtual "Current Earnings" line in Equity
-    /*
+    // 7. Inject Net Profit into Equity (Retained Earnings)
+    // We display it as a separate line in equity section for balance
     if (profitAndLoss.netProfit !== 0) {
-        balanceSheet.equity.push({ id: "virtual-pnl", name: "Current Net Profit", amount: profitAndLoss.netProfit });
+        balanceSheet.equity.push({
+            id: "CALC_NET_PROFIT",
+            name: "Net Profit (Current Period)",
+            code: "3999",
+            amount: profitAndLoss.netProfit
+        });
         balanceSheet.totalEquity += profitAndLoss.netProfit;
     }
-    */
-    // Leaving commented out for now unless requested, as simple BS view might be preferred.
 
     return {
-        balanceSheet,
-        profitAndLoss
+        profitAndLoss,
+        balanceSheet
     };
 }

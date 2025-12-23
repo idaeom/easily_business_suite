@@ -1,6 +1,7 @@
 
 import React from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Protect } from "@/components/auth/Protect";
 import { getItems, getVendors, getRequisitions, getTransfers, getOutlets } from "@/actions/inventory";
 import { getItemCategories } from "@/actions/setup-categories";
 import { ItemMaster } from "@/components/inventory/ItemMaster";
@@ -43,8 +44,11 @@ export default async function InventoryPage(props: InventoryPageProps) {
                 </div>
                 <div className="flex gap-2">
                     {/* Global Adjustment Button */}
-                    <StockAdjustmentDialog items={items as any[]} outletId={currentOutletId} />
+                    <Protect permission="INVENTORY_MANAGE_STOCK">
+                        <StockAdjustmentDialog items={items as any[]} outletId={currentOutletId} />
+                    </Protect>
                 </div>
+
             </div>
 
             <Tabs defaultValue="items" className="space-y-4">

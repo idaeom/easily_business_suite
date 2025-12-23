@@ -14,6 +14,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { List, LayoutGrid, ChevronLeft, ChevronRight, Edit } from "lucide-react";
+import { Protect } from "@/components/auth/Protect";
 
 interface Item {
     id: string;
@@ -147,9 +148,11 @@ export function ItemMaster({ items, categories = [], outlets = [], activeOutletI
                 </div>
                 <Dialog open={open} onOpenChange={setOpen}>
                     <DialogTrigger asChild>
-                        <Button size="sm" onClick={openCreate}>
-                            <Plus className="mr-2 h-4 w-4" /> Add Item
-                        </Button>
+                        <Protect permission="INVENTORY_MANAGE_ITEMS">
+                            <Button size="sm" onClick={openCreate}>
+                                <Plus className="mr-2 h-4 w-4" /> Add Item
+                            </Button>
+                        </Protect>
                     </DialogTrigger>
                     <DialogContent className="max-w-xl max-h-[90vh] overflow-y-auto">
                         <DialogHeader>
@@ -381,7 +384,9 @@ function ItemList({ items, onEdit }: { items: Item[]; onEdit: (item: Item) => vo
                                         )}
                                     </td>
                                     <td className="p-3 text-right">
-                                        <Button variant="ghost" size="sm" onClick={() => onEdit(item)}>Edit</Button>
+                                        <Protect permission="INVENTORY_MANAGE_ITEMS">
+                                            <Button variant="ghost" size="sm" onClick={() => onEdit(item)}>Edit</Button>
+                                        </Protect>
                                     </td>
                                 </tr>
                             ))}
@@ -414,9 +419,11 @@ function ItemList({ items, onEdit }: { items: Item[]; onEdit: (item: Item) => vo
                                     <span>Cost: ₦{Number(item.costPrice).toLocaleString()}</span>
                                     <span>Type: {item.itemType}</span>
                                 </div>
-                                <Button variant="outline" size="sm" className="w-full mt-2" onClick={() => onEdit(item)}>
-                                    <Edit className="h-3 w-3 mr-2" /> Edit Details
-                                </Button>
+                                <Protect permission="INVENTORY_MANAGE_ITEMS">
+                                    <Button variant="outline" size="sm" className="w-full mt-2" onClick={() => onEdit(item)}>
+                                        <Edit className="h-3 w-3 mr-2" /> Edit Details
+                                    </Button>
+                                </Protect>
                             </CardContent>
                         </Card>
                     ))}

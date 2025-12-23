@@ -35,7 +35,7 @@ interface Requisition {
     items?: any[];
 }
 
-export default function RequisitionBoard({ data, userRole }: { data: Requisition[], userRole: "ADMIN" | "USER" }) {
+export default function RequisitionBoard({ data, userRole }: { data: Requisition[], userRole: "ADMIN" | "MANAGER" | "ACCOUNTANT" | "CASHIER" | "USER" }) {
     const { toast } = useToast();
     const [reqs, setReqs] = useState<Requisition[]>(data);
 

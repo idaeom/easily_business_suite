@@ -19,6 +19,10 @@ const TEMPLATES: Record<CategoryTemplateType, string[]> = {
 export async function initializeItemCategories(template: CategoryTemplateType) {
     const user = await getAuthenticatedUser();
     if (!user) throw new Error("Unauthorized");
+
+    const { verifyPermission } = await import("@/lib/auth");
+    await verifyPermission("INVENTORY_MANAGE_ITEMS");
+
     const db = await getDb();
 
     const categoriesToCreate = TEMPLATES[template] || [];
@@ -51,6 +55,10 @@ export async function getItemCategories() {
 export async function createItemCategory(name: string) {
     const user = await getAuthenticatedUser();
     if (!user) throw new Error("Unauthorized");
+
+    const { verifyPermission } = await import("@/lib/auth");
+    await verifyPermission("INVENTORY_MANAGE_ITEMS");
+
     const db = await getDb();
 
     await db.insert(itemCategories).values({
@@ -65,6 +73,10 @@ export async function createItemCategory(name: string) {
 export async function deleteItemCategory(id: string) {
     const user = await getAuthenticatedUser();
     if (!user) throw new Error("Unauthorized");
+
+    const { verifyPermission } = await import("@/lib/auth");
+    await verifyPermission("INVENTORY_MANAGE_ITEMS");
+
     const db = await getDb();
 
     await db.delete(itemCategories).where(eq(itemCategories.id, id));

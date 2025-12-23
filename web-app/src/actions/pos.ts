@@ -15,6 +15,226 @@ import { calculateTax } from "@/lib/utils/tax-utils";
 // SHIFT MANAGEMENT
 // =========================================
 
+export async function refundTransaction(originalTxId: string) {
+    const user = await getAuthenticatedUser();
+    if (!user) throw new Error("Unauthorized");
+
+    const { verifyPermission } = await import("@/lib/auth");
+    await verifyPermission("REFUND_SALE");
+
+    const db = await getDb();
+
+    // 0. Ensure Active Shift
+    const activeShift = await getActiveShift();
+    if (!activeShift) throw new Error("Please open a shift to process a refund.");
+
+    // 1. Fetch Original Transaction
+    const originalTx = await db.query.posTransactions.findFirst({
+        where: eq(posTransactions.id, originalTxId),
+        with: { payments: true }
+    });
+
+    if (!originalTx) throw new Error("Transaction not found");
+    if (originalTx.isRefund) throw new Error("Cannot refund a refund.");
+
+    // Check if already refunded
+    const existingRefund = await db.query.posTransactions.findFirst({
+        where: eq(posTransactions.originalTransactionId, originalTxId)
+    });
+    if (existingRefund) throw new Error("Transaction already refunded.");
+
+    const refundAmount = Number(originalTx.totalAmount);
+    const negRefundAmount = -Math.abs(refundAmount);
+
+    // 2. Create Refund Transaction
+    const [refundTx] = await db.insert(posTransactions).values({
+        shiftId: activeShift.id,
+        contactId: originalTx.contactId,
+        totalAmount: negRefundAmount.toString(),
+        status: "COMPLETED",
+        itemsSnapshot: originalTx.itemsSnapshot,
+        transactionDate: new Date(),
+        isRefund: true,
+        originalTransactionId: originalTx.id,
+        loyaltyPointsEarned: originalTx.loyaltyPointsEarned ? (-Number(originalTx.loyaltyPointsEarned)).toString() : "0",
+        loyaltyPointsRedeemed: originalTx.loyaltyPointsRedeemed ? (-Number(originalTx.loyaltyPointsRedeemed)).toString() : "0",
+        taxAmount: originalTx.taxAmount ? (-Number(originalTx.taxAmount)).toString() : "0",
+        taxSnapshot: originalTx.taxSnapshot
+    }).returning();
+
+    // 3. Reverse Payments (Cash Out)
+    // We assume refund is via same methods? Or Cash? Default to CASH for simplicity usually, but let's try to reverse exact.
+    // If original was Card, we refund Card? 
+    // For MVP, allow user to specify? Logic here assumes auto-reversal.
+    // Let's reverse original methods for now.
+    await db.insert(transactionPayments).values(
+        originalTx.payments.map((p: any) => ({
+            transactionId: refundTx.id,
+            paymentMethodCode: p.paymentMethodCode,
+            amount: (-Number(p.amount)).toString(),
+            accountId: p.accountId,
+            reference: `REFUND-${originalTx.id.slice(0, 8)}`
+        }))
+    );
+
+    // 4. Reverse Inventory (Stock In)
+    const itemsList = originalTx.itemsSnapshot as { itemId: string, qty: number }[];
+    if (itemsList && itemsList.length > 0) {
+        // Find Outlet for Refund (Current Shift Outlet)
+        const outletId = activeShift.outletId || user.outletId;
+        if (outletId) {
+            for (const item of itemsList) {
+                await db.update(inventory)
+                    .set({ quantity: sql`${inventory.quantity} + ${item.qty}` }) // Add back
+                    .where(and(eq(inventory.itemId, item.itemId), eq(inventory.outletId, outletId)));
+            }
+        }
+    }
+
+    // 5. Reverse Loyalty
+    if (originalTx.contactId) {
+        const earned = Number(originalTx.loyaltyPointsEarned || 0);
+        const redeemed = Number(originalTx.loyaltyPointsRedeemed || 0);
+
+        // Reverse Earn (Deduct points)
+        if (earned > 0) {
+            await db.update(contacts)
+                .set({ loyaltyPoints: sql`${contacts.loyaltyPoints} - ${earned}` })
+                .where(eq(contacts.id, originalTx.contactId));
+
+            await db.insert(loyaltyLogs).values({
+                contactId: originalTx.contactId,
+                outletId: activeShift.outletId,
+                points: (-earned).toString(),
+                type: "ADJUSTMENT",
+                referenceId: refundTx.id,
+                description: "Refund Reversal: Earned Points"
+            });
+        }
+
+        // Reverse Redeem (Return points)
+        if (redeemed > 0) {
+            await db.update(contacts)
+                .set({ loyaltyPoints: sql`${contacts.loyaltyPoints} + ${redeemed}` })
+                .where(eq(contacts.id, originalTx.contactId));
+
+            await db.insert(loyaltyLogs).values({
+                contactId: originalTx.contactId,
+                outletId: activeShift.outletId,
+                points: redeemed.toString(),
+                type: "ADJUSTMENT",
+                referenceId: refundTx.id,
+                description: "Refund Reversal: Redeemed Points"
+            });
+        }
+    }
+
+    // 6. Reverse GL (Contra Entry)
+    const glTxId = crypto.randomUUID();
+    await db.insert(transactions).values({
+        id: glTxId,
+        date: new Date(),
+        description: `Refund for #${originalTx.id.slice(0, 8)}`,
+        status: "POSTED",
+        reference: refundTx.id,
+        metadata: { type: "REFUND", refundId: refundTx.id, originalTxId: originalTx.id }
+    });
+
+    // Debit Revenue (Contra-Revenue)
+    // We simply post DEBIT to Revenue Account to lower it.
+    const salesAccount = await db.query.accounts.findFirst({ where: eq(accounts.code, "4000") });
+    if (salesAccount) {
+        await db.insert(ledgerEntries).values({
+            transactionId: glTxId,
+            accountId: salesAccount.id,
+            amount: Math.abs(refundAmount).toString(),
+            direction: "DEBIT",
+            description: "Sales Return"
+        });
+        await db.update(accounts).set({ balance: sql`${accounts.balance} - ${Math.abs(refundAmount)}` }).where(eq(accounts.id, salesAccount.id));
+    }
+
+    // Credit Asset (Cash/Bank)
+    // We aggregate payments
+    // NOTE: This assumes 100% refund logic matches payment methods logic.
+    // If cash was involved:
+    // This part is complex without re-mapping every payment to every account.
+    // For now, simpler implementation: Credit "Undeposited Funds" or the specific accounts from original Payments?
+    // We already have original payments. Let's iterate them.
+    for (const p of originalTx.payments) {
+        if (p.accountId) {
+            await db.insert(ledgerEntries).values({
+                transactionId: glTxId,
+                accountId: p.accountId,
+                amount: Math.abs(Number(p.amount)).toString(),
+                direction: "CREDIT",
+                description: "Refund Payout"
+            });
+            await db.update(accounts).set({ balance: sql`${accounts.balance} - ${Math.abs(Number(p.amount))}` }).where(eq(accounts.id, p.accountId));
+        }
+    }
+
+    // Reverse COGS
+    // We need to fetch items again or assume items snapshot logic
+    // Logic: Debit Inventory, Credit COGS
+    // We can re-calculate cost from Items Snapshot (assuming price didn't massively change, or use Item Master current cost)
+    // Ideally we used cost at time of sale, but we didn't snapshot cost. Use current cost.
+    let totalCost = 0;
+    if (itemsList) {
+        // Note: Using current cost price is standard approximation when historical cost not tracked per item instance
+        const itemIds = itemsList.map(i => i.itemId);
+        const dbItems = await db.select().from(items).where(inArray(items.id, itemIds));
+        const costMap = new Map(dbItems.map(i => [i.id, Number(i.costPrice)]));
+
+        itemsList.forEach(i => {
+            totalCost += (costMap.get(i.itemId) || 0) * i.qty;
+        });
+    }
+
+    if (totalCost > 0) {
+        const cogsTxId = crypto.randomUUID();
+        const cogsAccount = await db.query.accounts.findFirst({ where: eq(accounts.code, "5000") });
+        const inventoryAccount = await db.query.accounts.findFirst({ where: eq(accounts.code, "1300") });
+
+        if (cogsAccount && inventoryAccount) {
+            await db.insert(transactions).values({
+                id: cogsTxId,
+                date: new Date(),
+                description: `COGS Reversal - Refund #${refundTx.id.slice(0, 8)}`,
+                status: "POSTED",
+                reference: refundTx.id,
+                metadata: { type: "COGS_REVERSAL" }
+            });
+
+            // CREDIT COGS (Decrease Expense)
+            await db.insert(ledgerEntries).values({
+                transactionId: cogsTxId,
+                accountId: cogsAccount.id,
+                amount: totalCost.toString(),
+                direction: "CREDIT",
+                description: "COGS Reversal"
+            });
+            await db.update(accounts).set({ balance: sql`${accounts.balance} - ${totalCost}` }).where(eq(accounts.id, cogsAccount.id));
+
+            // DEBIT INVENTORY (Increase Asset)
+            await db.insert(ledgerEntries).values({
+                transactionId: cogsTxId,
+                accountId: inventoryAccount.id,
+                amount: totalCost.toString(),
+                direction: "DEBIT",
+                description: "Inventory Return"
+            });
+            await db.update(accounts).set({ balance: sql`${accounts.balance} + ${totalCost}` }).where(eq(accounts.id, inventoryAccount.id));
+        }
+    }
+
+    await logAuditAction(user.id, "REFUND_SALE", refundTx.id, "TRANSACTION", { originalTxId });
+    revalidatePath("/dashboard/business/pos");
+    return { success: true };
+}
+
+
+
 export async function addShiftCashDeposit(data: {
     shiftId: string;
     amount: number;
@@ -59,6 +279,9 @@ export async function getActiveShift() {
 }
 
 export async function openShift(startCash: number, outletId?: string) {
+    const { verifyPermission } = await import("@/lib/auth");
+    await verifyPermission("POS_MANAGE_SHIFT");
+
     const user = await getAuthenticatedUser();
     if (!user) throw new Error("Unauthorized");
 
@@ -181,6 +404,9 @@ export async function getShiftSummary(shiftId: string) {
 
 
 export async function closeShift(shiftId: string, actuals: Record<string, number>) {
+    const { verifyPermission } = await import("@/lib/auth");
+    await verifyPermission("POS_MANAGE_SHIFT");
+
     const user = await getAuthenticatedUser();
     if (!user) throw new Error("Unauthorized");
 
@@ -242,7 +468,6 @@ export async function closeShift(shiftId: string, actuals: Record<string, number
     }
     return { success: true };
 }
-
 export async function reconcileShift(shiftId: string, data?: {
     verifiedCash: number;
     verifiedCard: number;
@@ -251,6 +476,9 @@ export async function reconcileShift(shiftId: string, data?: {
     cardAccountId?: string;
     transferAccountId?: string;
 }) {
+    const { verifyPermission } = await import("@/lib/auth");
+    await verifyPermission("POS_MANAGE_SHIFT");
+
     const user = await getAuthenticatedUser();
     if (!user) throw new Error("Unauthorized");
 
@@ -279,11 +507,6 @@ export async function reconcileShift(shiftId: string, data?: {
         if (ba?.glAccountId) transferGLAccountId = ba.glAccountId;
     }
 
-    // Default Fallback (Undeposited Funds / Bank) if selection failed but amount exists?
-    // Ideally we enforce selection, but for resilience finding a default asset account is good.
-    // Simplifying: If no GL Account found, we might skip posting that line or error.
-    // We will proceed, but log warning if amounts exist but no account.
-
     // 2. Calculate Variances & Totals
     const expectedCash = Number(shift.expectedCash);
     const expectedCard = Number(shift.expectedCard);
@@ -311,24 +534,19 @@ export async function reconcileShift(shiftId: string, data?: {
     });
 
     // Credits: Sales Revenue
-    // Using simple "Sales" account. In reality, should split by Net Sales & Tax Liability.
-    // Fetch generic Sales Account
     const salesAccount = await db.query.accounts.findFirst({ where: eq(accounts.code, "4000") });
     if (salesAccount) {
-        // Credit Revenue (Income)
         await db.insert(ledgerEntries).values({
             transactionId: glTxId,
             accountId: salesAccount.id,
-            amount: totalExpected.toString(), // We credit what we EXPECTED to earn (Revenue)
+            amount: totalExpected.toString(),
             direction: "CREDIT",
             description: "Shift Revenue Recognized"
         });
-        // Update Balance (Income increases with Credit? Depends on system. Usually Credit increases Equity/Liability/Income)
-        // Assuming strict double entry: Income is Credit normal.
         await db.update(accounts).set({ balance: sql`${accounts.balance} + ${totalExpected}` }).where(eq(accounts.id, salesAccount.id));
     }
 
-    // Debits: Assets (Where money actually went)
+    // Debits: Assets
     if (verifiedCash > 0 && cashGLAccountId) {
         await db.insert(ledgerEntries).values({
             transactionId: glTxId,
@@ -362,14 +580,7 @@ export async function reconcileShift(shiftId: string, data?: {
         await db.update(accounts).set({ balance: sql`${accounts.balance} + ${verifiedTransfer}` }).where(eq(accounts.id, transferGLAccountId));
     }
 
-    // Variance (Expense/Income)
-    // If Variance < 0 (Shortage), we need a DEBIT to Expense to balance.
-    // If Variance > 0 (Overage), we need a CREDIT to Income (Other Income) to balance.
-    /*
-        Example: Expected 100 (Cr Revenue 100). Verified 90 (Dr Asset 90).
-        Need Dr 10. (Expense).
-        Equation: Dr 90 + Dr 10 = Cr 100.
-    */
+    // Variance
     if (Math.abs(variance) > 0) {
         const varianceAccount = await db.query.accounts.findFirst({
             where: eq(accounts.name, "Cash Over/Short")
@@ -416,8 +627,6 @@ export async function reconcileShift(shiftId: string, data?: {
     });
 
     // 4. Confirm Wallet Deposits
-    // Find all PENDING Ledger Entries for this Shift's Transactions
-    // Wallet Funding Tx -> Ledger Entry (Pending)
     const pendingWalletDeposits = await db.query.customerLedgerEntries.findMany({
         where: and(
             eq(customerLedgerEntries.status, "PENDING"),
@@ -427,19 +636,38 @@ export async function reconcileShift(shiftId: string, data?: {
                     .from(posTransactions)
                     .where(eq(posTransactions.shiftId, shiftId))
             )
-        )
+        ),
+        with: {
+            transaction: {
+                with: {
+                    payments: true
+                }
+            }
+        }
     });
 
     console.log(`[Reconcile] Found ${pendingWalletDeposits.length} pending wallet deposits to confirm.`);
 
     for (const entry of pendingWalletDeposits) {
         try {
-            await confirmWalletDeposit(entry.id);
-            console.log(`[Reconcile] Confirmed Wallet Deposit: ${entry.id}`);
+            // Determine Method from Transaction Payments
+            // Wallet Funding transaction usually has 1 payment
+            const payment = entry.transaction?.payments[0];
+            const method = payment?.paymentMethodCode;
+
+            let targetAccountId = undefined;
+            if (method === "CASH") targetAccountId = data?.cashAccountId;
+            else if (method === "CARD") targetAccountId = data?.cardAccountId;
+            else if (method === "TRANSFER") targetAccountId = data?.transferAccountId;
+
+            if (targetAccountId) {
+                await confirmWalletDeposit(entry.id, targetAccountId);
+                console.log(`[Reconcile] Confirmed Wallet Deposit: ${entry.id} to Account ${targetAccountId}`);
+            } else {
+                console.warn(`[Reconcile] specific Business Account for method ${method} not provided. Skipping wallet deposit confirmation for ${entry.id}`);
+            }
         } catch (e) {
             console.error(`[Reconcile] Failed to confirm deposit ${entry.id}:`, e);
-            // Non-blocking? Or should we fail?
-            // Ideally non-blocking so shift closes, but we log error.
         }
     }
 
@@ -469,6 +697,9 @@ export interface ProcessTransactionData {
 }
 
 export async function processTransaction(data: ProcessTransactionData) {
+    const { verifyPermission } = await import("@/lib/auth");
+    await verifyPermission("PROCESS_SALE");
+
     const user = await getAuthenticatedUser();
     if (!user) throw new Error("Unauthorized");
     const db = await getDb();
@@ -871,251 +1102,8 @@ export async function getPosBusinessAccounts() {
     });
 }
 
-// =========================================
-// REFUNDS
-// =========================================
-
-export async function refundTransaction(data: {
-    shiftId: string;
-    originalTransactionId: string;
-    items?: { itemId: string; quantity: number }[];
-    reason?: string;
-}) {
-    const user = await getAuthenticatedUser();
-    if (!user) throw new Error("Unauthorized");
-    const db = await getDb();
-
-    // Validate Shift Context
-    const shift = await db.query.posShifts.findFirst({
-        where: eq(posShifts.id, data.shiftId),
-        columns: { status: true }
-    });
-    if (!shift || shift.status !== "OPEN") {
-        throw new Error("Refunds must be processed within an OPEN shift. Please open a shift first.");
-    }
-
-    return await refundTransactionCore(data, user, db);
-}
-
-export async function refundTransactionCore(data: {
-    shiftId: string;
-    originalTransactionId: string;
-    items?: { itemId: string; quantity: number }[];
-    reason?: string;
-}, user: any, db: any, skipRevalidation = false) {
-
-    // 1. Fetch Original
-    const originalTx = await db.query.posTransactions.findFirst({
-        where: eq(posTransactions.id, data.originalTransactionId),
-        with: { payments: true }
-    });
-
-    if (!originalTx) throw new Error("Transaction not found");
-    if (originalTx.isRefund) throw new Error("Cannot refund a refund");
-
-    const originalItems = originalTx.itemsSnapshot as { itemId: string; qty: number; price: number; name: string }[] || [];
-
-    // Determine Items to Refund
-    const itemsToRefund = data.items || originalItems.map(i => ({ itemId: i.itemId, quantity: i.qty }));
-
-    // Prepare for Restock Check - Fetch current item types
-    const itemIds = itemsToRefund.map(i => i.itemId);
-    const dbItems = await db.select().from(items).where(inArray(items.id, itemIds));
-    const dbItemsMap = new Map((dbItems as any[]).map(i => [i.id, i]));
-
-    // Validation
-    let refundSubtotal = 0;
-    const refundedItemsSnapshot = [];
-
-    for (const refItem of itemsToRefund) {
-        const origItem = originalItems.find(i => i.itemId === refItem.itemId);
-        if (!origItem) throw new Error(`Item ${refItem.itemId} not in original transaction`);
-        if (refItem.quantity > origItem.qty) throw new Error(`Cannot refund more than sold: ${origItem.name}`);
-
-        refundSubtotal += (origItem.price * refItem.quantity);
-        refundedItemsSnapshot.push({
-            itemId: origItem.itemId,
-            name: origItem.name,
-            qty: refItem.quantity,
-            price: origItem.price
-        });
-    }
-
-    // Pro-rata calculations
-    const originalTotal = Number(originalTx.totalAmount);
-    const originalSubtotal = originalItems.reduce((acc, i) => acc + (i.price * i.qty), 0);
-    const ratio = originalSubtotal > 0 ? (refundSubtotal / originalSubtotal) : 0;
-
-    const refundTotalAmount = roundToTwo(originalTotal * ratio);
-    const refundTaxAmount = roundToTwo(Number(originalTx.taxAmount) * ratio);
-    const refundDiscountAmount = roundToTwo(Number(originalTx.discountAmount) * ratio);
-    const refundPointsEarned = roundToTwo(Number(originalTx.loyaltyPointsEarned) * ratio);
-
-    // 2. Create Refund Transaction (Negative Values)
-    const [refundTx] = await db.insert(posTransactions).values([{
-        shiftId: data.shiftId,
-        contactId: originalTx.contactId,
-        totalAmount: (-refundTotalAmount).toString(),
-        status: "COMPLETED",
-        itemsSnapshot: refundedItemsSnapshot,
-        transactionDate: new Date(),
-        isRefund: true,
-        originalTransactionId: originalTx.id,
-        discountAmount: (-refundDiscountAmount).toString(),
-        taxAmount: (-refundTaxAmount).toString(),
-        loyaltyPointsEarned: (-refundPointsEarned).toString(),
-        loyaltyPointsRedeemed: "0"
-    }]).returning();
-
-    // 3. Record Refund Payment (Cash Out)
-    await db.insert(transactionPayments).values({
-        transactionId: refundTx.id,
-        paymentMethodCode: "CASH",
-        amount: (-refundTotalAmount).toString(),
-        reference: `Refund for #${originalTx.id.slice(0, 8)}`
-    });
-
-    // 4. Restock Inventory (Add back) - ONLY if PHYSICAL
-    // Resolve Shift Outlet
-    const shift = await db.query.posShifts.findFirst({
-        where: eq(posShifts.id, data.shiftId),
-        columns: { outletId: true }
-    });
-    const outletId = shift?.outletId;
-
-    if (outletId) {
-        for (const refItem of itemsToRefund) {
-            const dbItem = dbItemsMap.get(refItem.itemId);
-            if (dbItem && ["RESALE", "MANUFACTURED", "RAW_MATERIAL"].includes(dbItem.itemType)) {
-                const result = await db.update(inventory)
-                    .set({ quantity: sql`${inventory.quantity} + ${refItem.quantity}` })
-                    .where(and(eq(inventory.itemId, refItem.itemId), eq(inventory.outletId, outletId)))
-                    .returning();
-
-                if (result.length === 0) {
-                    await db.insert(inventory).values({
-                        itemId: refItem.itemId,
-                        outletId: outletId,
-                        quantity: refItem.quantity.toString()
-                    });
-                }
-            }
-        }
-    }
-
-    // 5. Reverse Loyalty Points
-    if (originalTx.contactId && refundPointsEarned > 0) {
-        await db.update(contacts)
-            .set({ loyaltyPoints: sql`${contacts.loyaltyPoints} - ${refundPointsEarned}` })
-            .where(eq(contacts.id, originalTx.contactId));
-
-        // Optional: Ledger entries for loyalty adjustment? Skipping for now.
-    }
-
-    // 6. GL POSTING (General Ledger)
-    // Refund: Debit Sales Revenue (Decrease Income), Credit Undeposited Funds (Decrease Asset)
-    const incomeAccount = await db.query.accounts.findFirst({
-        where: eq(accounts.code, "4000")
-    });
-    const cashAccount = await db.query.accounts.findFirst({
-        where: eq(accounts.code, "ACC-ASSET-002") // Undeposited Funds
-    });
-
-    if (incomeAccount && cashAccount) {
-        const glTxId = crypto.randomUUID();
-        // Header
-        await db.insert(transactions).values({
-            id: glTxId,
-            date: new Date(),
-            description: `Refund for Sale #${originalTx.id.slice(0, 8)}`,
-            status: "POSTED",
-            reference: refundTx.id
-        });
-
-        const amount = refundTotalAmount.toString();
-
-        // DEBIT Income (Reverse Revenue)
-        await db.insert(ledgerEntries).values({
-            transactionId: glTxId,
-            accountId: incomeAccount.id,
-            amount: amount,
-            direction: "DEBIT",
-            description: "Refund - Revenue Reversal"
-        });
-        await db.update(accounts).set({
-            balance: sql`${accounts.balance} - ${amount}`
-        }).where(eq(accounts.id, incomeAccount.id));
 
 
-        // CREDIT Cash (Reduce Cash)
-        await db.insert(ledgerEntries).values({
-            transactionId: glTxId,
-            accountId: cashAccount.id,
-            amount: amount,
-            direction: "CREDIT",
-            description: "Refund - Cash Payout"
-        });
-        await db.update(accounts).set({
-            balance: sql`${accounts.balance} - ${amount}`
-        }).where(eq(accounts.id, cashAccount.id));
-    }
-
-    // 7. REVERSE COGS (Cost of Goods Sold)
-    // Increase Inventory Asset (Debit 1300), Decrease COGS Expense (Credit 5000)
-    let totalRefundedCost = 0;
-
-    itemsToRefund.forEach(item => {
-        const dbItem = dbItemsMap.get(item.itemId);
-        if (dbItem && ["RESALE", "MANUFACTURED"].includes(dbItem.itemType)) {
-            const cost = Number(dbItem.costPrice || 0);
-            totalRefundedCost += (cost * item.quantity);
-        }
-    });
-
-    if (totalRefundedCost > 0) {
-        const cogsTxId = crypto.randomUUID();
-        const cogsAccount = await db.query.accounts.findFirst({ where: eq(accounts.code, "5000") });
-        const inventoryAccount = await db.query.accounts.findFirst({ where: eq(accounts.code, "1300") });
-
-        if (cogsAccount && inventoryAccount) {
-            await db.insert(transactions).values({
-                id: cogsTxId,
-                date: new Date(),
-                description: `COGS Reversal for Refund #${refundTx.id.slice(0, 8)}`,
-                status: "POSTED",
-                reference: refundTx.id,
-                metadata: { type: "COGS_REVERSAL", refundTransactionId: refundTx.id }
-            });
-
-            // DEBIT INVENTORY (Asset Increase)
-            await db.insert(ledgerEntries).values({
-                transactionId: cogsTxId,
-                accountId: inventoryAccount.id,
-                amount: totalRefundedCost.toString(),
-                direction: "DEBIT",
-                description: "Inventory Restock (Refund)"
-            });
-            await db.update(accounts).set({ balance: sql`${accounts.balance} + ${totalRefundedCost}` }).where(eq(accounts.id, inventoryAccount.id));
-
-            // CREDIT COGS (Expense Decrease)
-            await db.insert(ledgerEntries).values({
-                transactionId: cogsTxId,
-                accountId: cogsAccount.id,
-                amount: totalRefundedCost.toString(),
-                direction: "CREDIT",
-                description: "COGS Reversal (Refund)"
-            });
-            await db.update(accounts).set({ balance: sql`${accounts.balance} - ${totalRefundedCost}` }).where(eq(accounts.id, cogsAccount.id));
-        }
-    }
-
-    if (!skipRevalidation && process.env.IS_SCRIPT !== "true") revalidatePath("/dashboard/business/pos");
-    return { success: true, refundId: refundTx.id };
-}
-
-// =========================================
-// RECONCILIATION ACTIONS
-// =========================================
 
 export async function confirmShiftReconciliation(id: string) {
     const user = await getAuthenticatedUser();

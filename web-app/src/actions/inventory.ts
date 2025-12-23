@@ -82,6 +82,10 @@ export async function createItem(data: {
 }) {
     const user = await getAuthenticatedUser();
     if (!user) throw new Error("Unauthorized");
+
+    const { verifyPermission } = await import("@/lib/auth");
+    await verifyPermission("INVENTORY_MANAGE_ITEMS");
+
     const db = await getDb();
 
     await db.insert(items).values([{
@@ -110,6 +114,10 @@ export async function updateItem(id: string, data: {
 }) {
     const user = await getAuthenticatedUser();
     if (!user) throw new Error("Unauthorized");
+
+    const { verifyPermission } = await import("@/lib/auth");
+    await verifyPermission("INVENTORY_MANAGE_ITEMS");
+
     const db = await getDb();
 
     // 1. Update Base Item
@@ -340,6 +348,10 @@ export async function createGrn(data: {
 }) {
     const user = await getAuthenticatedUser();
     if (!user) throw new Error("Unauthorized");
+
+    const { verifyPermission } = await import("@/lib/auth");
+    await verifyPermission("INVENTORY_MANAGE_STOCK");
+
     const db = await getDb();
 
     // Fetch Request details for pricing and vendor info
@@ -540,6 +552,10 @@ export async function adjustStock(data: {
 }) {
     const user = await getAuthenticatedUser();
     if (!user) throw new Error("Unauthorized");
+
+    const { verifyPermission } = await import("@/lib/auth");
+    await verifyPermission("INVENTORY_MANAGE_STOCK");
+
     const db = await getDb();
     const { inventoryAdjustments } = await import("@/db/schema");
 
@@ -585,6 +601,10 @@ export async function createTransfer(data: {
 }) {
     const user = await getAuthenticatedUser();
     if (!user) throw new Error("Unauthorized");
+
+    const { verifyPermission } = await import("@/lib/auth");
+    await verifyPermission("INVENTORY_MANAGE_STOCK");
+
     const db = await getDb();
     const { dispatches, dispatchGrnEntries } = await import("@/db/schema");
 
@@ -680,6 +700,10 @@ export async function receiveTransfer(
 ) {
     const user = await getAuthenticatedUser();
     if (!user) throw new Error("Unauthorized");
+
+    const { verifyPermission } = await import("@/lib/auth");
+    await verifyPermission("INVENTORY_MANAGE_STOCK");
+
     const db = await getDb();
 
     const transfer = await db.query.inventoryTransfers.findFirst({
