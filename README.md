@@ -1,46 +1,61 @@
 # Easily Business Suite
 
-**Easily Business Suite** is a comprehensive, enterprise-grade ERP solution designed to streamline business operations across Commerce, Finance, and Human Resources.
+**Easily Business Suite** is an enterprise-grade ERP solution designed to unify and streamline business operations across Commerce, Finance, and Human Resources. It serves as a central nervous system for modern businesses, integrating critical functions into a single, cohesive platform.
 
-## 🚀 Overview
+## 🚀 Key Modules
 
-The suite is architected as a **Monorepo** containing:
-*   **`web-app`**: The core administration dashboard and business logic (Next.js).
-*   **`mobile-app`**: (Upcoming) Mobile interface for field operations.
+### 1. 🛒 Commerce Pro (POS & Retail)
+Designed for speed and accuracy in high-volume retail environments.
+*   **Smart Checkout**: Support for barcode scanning, product search, and quick keys.
+*   **Multi-Payment Splits**: Process complex transactions with mixed payment methods (Cash, Card, Transfer, Loyalty Points, Credit).
+*   **Shift Management**: Strict cash control with Opening/Closing reconciliation and variance tracking.
 
-## 📦 Modules
+### 2. 📦 Inventory & Supply Chain
+Professional stock management with audit-ready traceability.
+*   **Procurement Cycle**: Vendor management, Requisition approvals, and Goods Received Notes (GRN).
+*   **Stock Control**: Inter-outlet transfers, Stock Adjustments, and Manual counts.
+*   **Valuation Reports**: Real-time Inventory Valuation based on Moving Average Cost (COGS).
 
-### 1. Commerce Pro
-Manage the entire lifecycle of goods and services.
-*   **Sales Pro**: Quote-to-Cash workflow, Customer Management, Point of Sale (POS), and Wallet funding.
-*   **Inventory Pro**: Stock management, Reorder points, Warehousing.
-*   **Operations Pro**: Dispatch, Logistics, and Delivery management.
+### 3. 💰 Finance Pro
+A double-entry accounting system running under the hood.
+*   **General Ledger**: Automatic posting of all transactions to the GL with a Standard Chart of Accounts.
+*   **Financial Statements**: Real-time Profit & Loss (P&L) and Balance Sheet.
+*   **Business Accounts**: Manage multiple bank accounts, cash drawers, and mobile wallets.
+*   **Budgeting & Expenses**: Track spending against allocated budgets with multi-level approval hierarchies.
 
-### 2. Finance Pro
-Robust financial tracking and integrity.
-*   **General Ledger**: Double-entry accounting core with Standard Chart of Accounts (Service, Retail, Manufacturing templates).
-*   **Revenue Pro**: POS Shift Reconciliation, Cash Variance tracking, and Wallet Funding verification.
-*   **Business Banking**: Management of physical bank accounts and wallets, mapped to GL assets.
-*   **Expenses & Budgeting**: Track spending against allocated budgets with multi-level approval and disbursement logic.
-*   **Financial Reports**: Income statements, Balance sheets, and cash flow (Real-time).
+### 4. 👥 HR & Payroll Pro
+End-to-end employee lifecycle management, localized for Nigerian compliance.
+*   **Workforce Management**: Employee profiles, roles, and employment types (Full-time/Contract).
+*   **Payroll Engine**: Automated monthly payroll calculating Basic, Allowances, PAYE Tax, and Pension (8%).
+*   **Disbursement**: One-click batch payment processing for salaries.
+*   **Compliance**: Statutory reporting and automated GL posting of liabilities.
 
-### 3. HR Pro
-Manage teams, payroll, and compliance (Nigeria Localized).
-*   **Workforce**: Employee directory and roles (RBAC).
-*   **Payroll Engine**:
-    *   Automated PAYE (Tax) and Pension (8%) calculations.
-    *   Statutory compliance with Consolidated Relief Allowance (CRA).
-    *   Automated GL Posting (Salaries Expense, Tax Payable, Pension Payable).
-*   **Disbursement**: Direct expense logging for payroll liabilities.
+### 5. ✅ Task & Project Management
+Integrated productivity tools to keep teams aligned.
+*   **Kanban Board**: Drag-and-drop task management with custom workflow stages.
+*   **Collaboration**: Comments, file attachments, and assignment notifications.
+
+### 6. 🛡️ System Administration
+Robust security and control.
+*   **RBAC (Role-Based Access Control)**: Granular permissions module (e.g., `POS_ACCESS`, `HR_VIEW_SENSITIVE`).
+*   **Audit Logs**: Comprehensive trail of sensitive actions for security and compliance.
+
+---
 
 ## 🛠 Tech Stack
 
-*   **Framework**: [Next.js 14](https://nextjs.org/) (App Router, Server Actions)
-*   **Database**: PostgreSQL
-*   **ORM**: [Drizzle ORM](https://orm.drizzle.team/)
-*   **UI Components**: [Shadcn UI](https://ui.shadcn.com/) + Tailwind CSS
-*   **Authentication**: NextAuth.js
-*   **State Management**: React Server Components & Hooks
+The suite is architected as a Monorepo:
+
+*   **`web-app`**: The core administration dashboard and business logic.
+    *   **Framework**: [Next.js 15](https://nextjs.org/) (App Router)
+    *   **Database**: PostgreSQL (via Supabase)
+    *   **ORM**: [Drizzle ORM](https://orm.drizzle.team/)
+    *   **UI**: Shadcn UI + Tailwind CSS
+    *   **Auth**: NextAuth.js
+
+*   **`mobile-app`**: (Upcoming) Mobile interface for field operations.
+
+---
 
 ## ⚡️ Getting Started
 
@@ -65,21 +80,22 @@ Manage teams, payroll, and compliance (Nigeria Localized).
 3.  **Environment Variables**
     Create a `.env` file in `web-app/` with your database connection:
     ```env
-    DATABASE_URL="postgresql://user:password@localhost:5432/easily_db"
+    DATABASE_URL="postgresql://user:password@host:port/db"
     NEXTAUTH_SECRET="your-secret-key"
     NEXTAUTH_URL="http://localhost:3000"
     ```
 
 4.  **Database Migration**
     ```bash
-    npm run db:push
+    npx drizzle-kit push
     ```
 
 5.  **Run Development Server**
     ```bash
     npm run dev
     ```
-    Visit [http://localhost:3000](http://localhost:3000).
+
+---
 
 ## 🤝 Contributing
 1.  Fork the repository.
@@ -88,5 +104,7 @@ Manage teams, payroll, and compliance (Nigeria Localized).
 4.  Push to the branch.
 5.  Open a Pull Request.
 
+---
+
 ## 📄 License
-Private / Proprietary.
+Private Property of Easily.
