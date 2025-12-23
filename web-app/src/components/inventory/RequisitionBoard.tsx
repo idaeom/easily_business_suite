@@ -119,7 +119,7 @@ export default function RequisitionBoard({ data, userRole }: { data: Requisition
     };
 
     const [page, setPage] = useState(1);
-    const itemsPerPage = 9;
+    const itemsPerPage = view === "grid" ? 3 : 9;
 
     const totalPages = Math.ceil(reqs.length / itemsPerPage);
     const paginatedReqs = reqs.slice((page - 1) * itemsPerPage, page * itemsPerPage);
