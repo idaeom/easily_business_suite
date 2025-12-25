@@ -1,6 +1,10 @@
-# Easily Business Suite
+# Briefly Business Suite
 
-Easily Business Suite is an enterprise-grade ERP solution engineered to unify business operations. It integrates Point of Sale (POS), Inventory & Supply Chain, Financial Accounting, Human Resources, and Project Management into a single, cohesive platform.
+Briefly Business Suite is an enterprise-grade ERP solution engineered to unify business operations. It integrates Point of Sale (POS), Inventory & Supply Chain, Financial Accounting, Human Resources, and Project Management into a single, cohesive platform.
+
+This monorepo contains the `web-app` (Next.js) which serves as the primary interface for all business operations.
+
+---
 
 ## 🚀 Key Modules
 
@@ -35,17 +39,17 @@ End-to-end employee lifecycle management.
 *   **Performance**: KPI-based Appraisals and Leave Management.
 
 ### 5. ✅ Task & Project Management
- Integrated productivity tools to manage teams.
+Integrated productivity tools to manage teams.
 *   **Kanban Board**: Drag-and-drop task management with custom stages.
 *   **Templates**: Reusable task structures for recurring operations.
 *   **Collaboration**: Task comments, file attachments, and assignment notifications.
 
 ### 6. 🛡️ System Administration & Security
 Robust security framework for enterprise control.
-*   **RBAC (Role-Based Access Control)**: Pre-defined roles (Admin, Manager, Accountant, Cashier).
-*   **Granular Permissions**: Module-level toggle permissions (e.g., `POS_ACCESS`, `HR_VIEW_SENSITIVE`, `APPROVE_EXPENSE`).
+*   **RBAC (Role-Based Access Control)**: Pre-defined roles (Admin, Manager, Accountant, Cashier) with granular permissions.
 *   **Audit Logs**: Comprehensive trail of sensitive actions (Deletions, Price Changes, Logins).
 *   **Multi-Outlet**: Centralized management for multi-branch businesses.
+*   **User Management**: Advanced search, filtering, and role management for administrators.
 
 ---
 
@@ -57,7 +61,37 @@ Robust security framework for enterprise control.
 *   **ORM**: [Drizzle ORM](https://orm.drizzle.team/)
 *   **Styling**: Tailwind CSS + [Shadcn UI](https://ui.shadcn.com/)
 *   **Auth**: NextAuth.js
-*   **State**: Server Actions & React Hooks
+*   **Validation**: Zod
+*   **Charts**: Recharts
+*   **Date Handling**: Date-fns
+
+---
+
+## 🔐 Security Architecture
+
+We prioritize security in every layer of the application.
+
+### 1. Secure File Uploads
+*   **Private Storage**: Files are stored in a private directory (`storage/uploads`), never in the public web root.
+*   **Magic Number Validation**: We strictly validate file types by checking binary signatures, not just extensions, to prevent spoofing (e.g., renames `.exe` to `.pdf`).
+*   **Authenticated Serving**: Files are served via a secured API route (`/api/uploads/view/[id]`) that checks user permissions before streaming content.
+*   **UUID Sanitization**: Filenames are randomized with UUIDs to prevent directory traversal and collision attacks.
+
+### 2. SSRF Protection (Server-Side Request Forgery)
+*   **Input Validation**: All user-supplied URLs are strictly validated.
+*   **Private Network Blocking**: Our `safeFetch` utility blocks requests to internal IP ranges (e.g., `127.0.0.1`, `10.0.0.0/8`, `192.168.0.0/16`) to prevent attackers from probing internal infrastructure.
+*   **DNS Rebinding Protection**: We resolve hostnames and verify IPs before connection.
+*   **Redirect handling**: Redirects are strictly monitored to ensure they don't lead to unsafe destinations.
+
+### 3. WAF & Network Security
+*   **Rate Limiting**: Implemented to prevent abuse and denial-of-service attacks.
+*   **Security Headers**: Configured with strict Content Security Policy (CSP), HSTS, and X-Content-Type-Options.
+*   **Structured Logging**: All security events are logged for audit and monitoring.
+
+### 4. Access Control
+*   **Middleware Protection**: Route-level guarding based on User Role.
+*   **Server Action Security**: All mutations (`create`, `update`, `delete`) are protected by strictly typed server-side permission checks.
+*   **UI Guarding**: `<Protect>` component ensures unauthorized users cannot see sensitive UI elements.
 
 ---
 
@@ -102,21 +136,18 @@ Robust security framework for enterprise control.
 
 ## 🧪 Verification & Testing
 
-The project includes a suite of verification scripts in `src/scripts` to ensure accounting integrity:
+The project includes a suite of verification scripts in `src/scripts` to ensure system integrity and security:
 
+### Business Logic Verification
 *   `npm run verify-cogs`: Audits Cost of Goods Sold calculations and GL postings.
 *   `npm run verify-payroll`: Validates payroll tax calculations and net pay accuracy.
 *   `npm run verify-finance`: Checks General Ledger balance consistency vs Business Accounts.
 
----
-
-## 🔐 Security Architecture
-
-*   **Middleware Protection**: Route-level guarding based on User Role.
-*   **Server Action Security**: All mutations (`create`, `update`, `delete`) are protected by server-side permission checks.
-*   **UI Guarding**: `<Protect>` component ensures unauthorized users cannot see sensitive UI elements.
+### Security Verification
+*   `npm run verify-upload-security`:  Tests the file upload system against malicious file types (e.g., executables) and verifies private storage isolation.
+*   `npm run verify-permissions`: Audits RBAC implementation across key modules.
 
 ---
 
-## License
-Private Property of Easily.
+## 📄 License
+Private Property of Briefly.
