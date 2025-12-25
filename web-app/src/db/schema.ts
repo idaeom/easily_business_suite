@@ -261,22 +261,7 @@ export const budgets = pgTable("Budget", {
     updatedAt: timestamp("updatedAt", { mode: "date" }).defaultNow().notNull().$onUpdate(() => new Date()),
 });
 
-// Attachments
-export const attachments = pgTable("Attachment", {
-    id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
-    name: text("name").notNull(),
-    url: text("url").notNull(),
-    type: text("type").notNull(),
-    size: integer("size").notNull(),
-    taskId: text("taskId").references(() => tasks.id),
-    expenseId: text("expenseId").references(() => expenses.id),
-    leaveRequestId: text("leaveRequestId").references(() => leaveRequests.id),
-    appraisalId: text("appraisalId").references(() => appraisals.id),
-    payrollRunId: text("payrollRunId").references(() => payrollRuns.id),
-    profileChangeRequestId: text("profileChangeRequestId").references(() => profileChangeRequests.id),
-    uploaderId: text("uploaderId").notNull().references(() => users.id),
-    createdAt: timestamp("createdAt", { mode: "date" }).defaultNow().notNull(),
-});
+
 
 // Task Extensions
 export const taskExtensions = pgTable("TaskExtension", {
@@ -530,6 +515,25 @@ export const requestGrns = pgTable("RequestGrn", {
     itemsLogged: jsonb("itemsLogged").$type<{ itemId: string; quantityReceived: number; condition: string }[]>().notNull(),
     createdAt: timestamp("createdAt", { mode: "date" }).defaultNow().notNull(),
 });
+
+// Attachments (Moved here to allow referencing requestOrders)
+export const attachments = pgTable("Attachment", {
+    id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+    name: text("name").notNull(),
+    url: text("url").notNull(),
+    type: text("type").notNull(),
+    size: integer("size").notNull(),
+    taskId: text("taskId").references(() => tasks.id),
+    expenseId: text("expenseId").references(() => expenses.id),
+    leaveRequestId: text("leaveRequestId").references(() => leaveRequests.id),
+    appraisalId: text("appraisalId").references(() => appraisals.id),
+    payrollRunId: text("payrollRunId").references(() => payrollRuns.id),
+    profileChangeRequestId: text("profileChangeRequestId").references(() => profileChangeRequests.id),
+    requestOrderId: text("requestOrderId").references(() => requestOrders.id), // Added as requested
+    uploaderId: text("uploaderId").notNull().references(() => users.id),
+    createdAt: timestamp("createdAt", { mode: "date" }).defaultNow().notNull(),
+});
+
 
 // =========================================
 // BUSINESS SUITE - OPERATIONS PRO
@@ -1162,6 +1166,10 @@ export const usersRelations = relations(users, ({ one, many }) => ({
     appraisals: many(appraisals, { relationName: "Evaluatee" }),
     appraisalsGiven: many(appraisals, { relationName: "Reviewer" }),
     payrollItems: many(payrollItems),
+    outlet: one(outlets, {
+        fields: [users.outletId],
+        references: [outlets.id],
+    }),
 }));
 
 export const employeeProfilesRelations = relations(employeeProfiles, ({ one }) => ({

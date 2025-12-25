@@ -5,12 +5,24 @@ import { InviteUserDialog } from "@/components/settings/InviteUserDialog";
 import { UsersTable } from "@/components/settings/UsersTable";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { verifyRole } from "@/lib/auth";
+import { UserFilters } from "@/components/settings/UserFilters";
+import { Pagination } from "@/components/Pagination";
 
-export default async function UsersPage() {
-    // Only Admin can see this page (Double check, although Middleware handles it)
+export default async function UsersPage({
+    searchParams,
+}: {
+    searchParams: Promise<{ [key: string]: string | string[] | undefined }> // Next.js 15+ searchParams is a Promise
+}) {
+    // Only Admin can see this page
     await verifyRole(["ADMIN"]);
 
-    const users = await getUsers();
+    const params = await searchParams;
+    const page = Number(params.page) || 1;
+    const search = params.search as string || "";
+    const role = params.role as string || "";
+
+    const { data: users, meta } = await getUsers({ page, limit: 10, search, role });
+
     const db = await getDb();
     const allOutlets = await db.select({ id: outlets.id, name: outlets.name }).from(outlets);
 
@@ -28,6 +40,8 @@ export default async function UsersPage() {
                 </div>
             </div>
 
+            <UserFilters />
+
             <Card>
                 <CardHeader>
                     <CardTitle>Users</CardTitle>
@@ -37,6 +51,13 @@ export default async function UsersPage() {
                 </CardHeader>
                 <CardContent>
                     <UsersTable users={users as any} outlets={allOutlets} />
+                    <div className="mt-4">
+                        <Pagination
+                            currentPage={meta.page}
+                            totalItems={meta.total}
+                            pageSize={meta.limit}
+                        />
+                    </div>
                 </CardContent>
             </Card>
         </div>

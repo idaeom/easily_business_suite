@@ -1,127 +1,65 @@
-
 "use server";
 
-import { getDb } from "@/db";
-import { salesTaxes, discounts, outlets } from "@/db/schema";
-import { eq, desc } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
+import { SettingsService } from "@/services/settings-service";
+import { saveSalesTaxSchema, saveDiscountSchema } from "@/lib/dtos/settings-dtos";
 
-// ===========================================
 // TAXES
-// ===========================================
-
 export async function getSalesTaxes() {
-    const db = await getDb();
-    return db.query.salesTaxes.findMany({
-        orderBy: [desc(salesTaxes.name)],
-    });
+    return SettingsService.getSalesTaxes();
 }
 
-export async function saveSalesTax(data: {
-    id?: string;
-    name: string;
-    rate: number;
-    type: "INCLUSIVE" | "EXCLUSIVE";
-    isEnabled: boolean;
-}) {
-    const db = await getDb();
-
-    if (data.id) {
-        // Update
-        await db.update(salesTaxes).set({
-            name: data.name,
-            rate: data.rate.toString(),
-            type: data.type,
-            isEnabled: data.isEnabled
-        }).where(eq(salesTaxes.id, data.id));
-    } else {
-        // Create
-        await db.insert(salesTaxes).values({
-            name: data.name,
-            rate: data.rate.toString(),
-            type: data.type,
-            isEnabled: data.isEnabled
-        });
-    }
+export async function saveSalesTax(rawData: any) {
+    const data = saveSalesTaxSchema.parse(rawData);
+    await SettingsService.saveSalesTax(data);
     revalidatePath("/dashboard/settings/taxes");
     return { success: true };
 }
 
 export async function deleteSalesTax(id: string) {
-    const db = await getDb();
-    await db.delete(salesTaxes).where(eq(salesTaxes.id, id));
+    await SettingsService.deleteSalesTax(id);
     revalidatePath("/dashboard/settings/taxes");
     return { success: true };
 }
 
-// ===========================================
 // DISCOUNTS
-// ===========================================
-
 export async function getDiscounts() {
-    const db = await getDb();
-    return db.query.discounts.findMany({
-        orderBy: [desc(discounts.name)],
-    });
+    return SettingsService.getDiscounts();
 }
 
-export async function saveDiscount(data: {
-    id?: string;
-    name: string;
-    type: "PERCENTAGE" | "FIXED";
-    value: number;
-    isEnabled: boolean;
-}) {
-    const db = await getDb();
-
-    if (data.id) {
-        await db.update(discounts).set({
-            name: data.name,
-            type: data.type,
-            value: data.value.toString(),
-            isEnabled: data.isEnabled
-        }).where(eq(discounts.id, data.id));
-    } else {
-        await db.insert(discounts).values({
-            name: data.name,
-            type: data.type,
-            value: data.value.toString(),
-            isEnabled: data.isEnabled
-        });
-    }
+export async function saveDiscount(rawData: any) {
+    const data = saveDiscountSchema.parse(rawData);
+    await SettingsService.saveDiscount(data);
     revalidatePath("/dashboard/settings/discounts");
     return { success: true };
 }
 
 export async function deleteDiscount(id: string) {
-    const db = await getDb();
-    await db.delete(discounts).where(eq(discounts.id, id));
+    await SettingsService.deleteDiscount(id);
     revalidatePath("/dashboard/settings/discounts");
     return { success: true };
 }
 
-// ===========================================
-// LOYALTY (Outlet Defaults)
-// ===========================================
-
+// LOYALTY SETTINGS
 export async function getLoyaltySettings(outletId: string) {
-    const db = await getDb();
-    const outlet = await db.query.outlets.findFirst({
-        where: eq(outlets.id, outletId),
-        columns: {
-            loyaltyEarningRate: true,
-            loyaltyRedemptionRate: true
-        }
-    });
-    return outlet;
+    // Keeping getter simple
+    const { getOutlet } = await import("@/actions/settings");
+    const outlet = await getOutlet(outletId);
+    return outlet ? {
+        loyaltyEarningRate: outlet.loyaltyEarningRate,
+        loyaltyRedemptionRate: outlet.loyaltyRedemptionRate
+    } : null;
 }
 
 export async function saveLoyaltySettings(outletId: string, earningRate: number, redemptionRate: number) {
-    const db = await getDb();
-    await db.update(outlets).set({
+    // Reusing updateOutlet logic or distinct? 
+    // Distinct DB call in original, but effectively just updating rates.
+    // Let's use UpdateOutlet logic via Service to reuse code.
+    await SettingsService.updateOutlet(outletId, {
         loyaltyEarningRate: earningRate.toString(),
         loyaltyRedemptionRate: redemptionRate.toString()
-    }).where(eq(outlets.id, outletId));
+    });
+
     if (process.env.IS_SCRIPT !== "true") {
         revalidatePath("/dashboard/settings/loyalty");
     }

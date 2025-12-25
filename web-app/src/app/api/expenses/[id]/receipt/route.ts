@@ -49,22 +49,25 @@ export async function POST(
     const bytes = await file.arrayBuffer();
     const buffer = Buffer.from(bytes);
 
-    // Ensure upload directory exists
-    const uploadDir = join(process.cwd(), "public", "uploads");
-    await mkdir(uploadDir, { recursive: true });
-
-    const filename = `${Date.now()}-${file.name.replace(/[^a-zA-Z0-9.-]/g, "_")}`;
-    const filepath = join(uploadDir, filename);
-
     try {
-        await writeFile(filepath, buffer);
-        const url = `/uploads/${filename}`;
+        // 1. Validate
+        const { validateFileBuffer } = await import("@/lib/server/file-validation");
+        const validation = await validateFileBuffer(buffer);
 
+        if (!validation.isValid) {
+            return new NextResponse("Invalid file type", { status: 400 });
+        }
+
+        // 2. Secure Save
+        const { saveSecureFile } = await import("@/lib/server/secure-storage");
+        const savedFile = await saveSecureFile(buffer, file.name, validation.mime || file.type);
+
+        // 3. Update DB
         const [attachment] = await db.insert(attachments).values({
-            name: file.name,
-            url: url,
-            type: file.type,
-            size: file.size,
+            name: savedFile.originalName,
+            url: savedFile.path, // Store secure filename
+            type: savedFile.mimeType,
+            size: savedFile.size,
             expenseId: id,
             uploaderId: user.id,
         }).returning();

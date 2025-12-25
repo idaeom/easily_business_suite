@@ -57,33 +57,79 @@ export async function createExpenseAction(formData: FormData) {
         return { error: "Invalid beneficiary data" };
     }
 
-    // 3. Handle File Upload (Local Dev / VPS approach)
-    // In production (Vercel/Netlify), use S3/Supabase Storage presigned URLs.
+    // 3. Handle File Upload (Secure)
     const file = formData.get("receipt") as File;
+    let attachmentId = null;
+
     if (file && file.size > 0) {
         const bytes = await file.arrayBuffer();
         const buffer = Buffer.from(bytes);
 
-        const uploadDir = join(process.cwd(), "public", "uploads");
-        await mkdir(uploadDir, { recursive: true });
+        // a. Validate
+        try {
+            const { validateFileBuffer } = await import("@/lib/server/file-validation");
+            const validation = await validateFileBuffer(buffer);
 
-        const fileName = `${Date.now()}-${file.name.replace(/[^a-zA-Z0-9.-]/g, "_")}`;
-        const filePath = join(uploadDir, fileName);
+            if (!validation.isValid) {
+                return { error: "Invalid file type. Only Images, PDFs, and Office docs are allowed." };
+            }
 
-        await writeFile(filePath, buffer);
+            // b. Secure Save
+            const { saveSecureFile } = await import("@/lib/server/secure-storage");
+            const savedFile = await saveSecureFile(buffer, file.name, validation.mime || file.type);
 
-        // Note: You'd pass this URL to ExpenseService if your schema supports it (e.g., attachments table)
-        // For now, we assume AttachmentService handles it separately or we extend ExpenseService.
+            // c. Create Attachment Record 
+            // We need to insert this into the attachments table and link it to the expense later, 
+            // or pass the metadata to ExpenseService to handle the DB insertion.
+            // Since ExpenseService.createExpense takes a complex object, let's see if we can pass attachment data.
+            // Currently `createExpense` schema might not support it directly.
+            // Let's modify the payload we send to ExpenseService to include `attachment`.
+
+            // For this refactor, I will append the attachment info to the rawData 
+            // or handle the DB insert here if ExpenseService doesn't support it yet.
+            // Looking at schema, Attachment has `expenseId`. 
+            // It's better to create the expense FIRST, then create the attachment linked to it.
+            // So we'll hold onto the `savedFile` metadata.
+
+            // We'll pass this special object context to the service call below
+            // OR we rely on the service to return the ID and then we insert the attachment.
+
+            // Let's do: Create Expense -> Get ID -> Insert Attachment.
+            // Need to update step 4.
+
+            (validated as any).tempAttachment = savedFile;
+
+        } catch (e) {
+            console.error("Upload error", e);
+            return { error: "File upload failed" };
+        }
     }
 
     // 4. Call The Service
     try {
-        await ExpenseService.createExpense({
+        const newExpense = await ExpenseService.createExpense({
             ...validated,
             incurredAt: new Date(validated.incurredAt),
             requesterId: user.id,
             beneficiaries: beneficiaries
         });
+
+        // Handle Attachment Linking
+        if ((validated as any).tempAttachment) {
+            const savedFile = (validated as any).tempAttachment;
+            const { getDb } = await import("@/db");
+            const { attachments } = await import("@/db/schema");
+
+            const db = await getDb();
+            await db.insert(attachments).values({
+                name: savedFile.originalName,
+                url: savedFile.path, // relative path (UUID)
+                type: savedFile.mimeType,
+                size: savedFile.size,
+                expenseId: newExpense.id, // Assuming createExpense returns the object with ID
+                uploaderId: user.id
+            });
+        }
     } catch (error: any) {
         return { error: error.message };
     }

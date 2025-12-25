@@ -9,7 +9,7 @@ export const journalEntryStatusEnum = pgEnum("JournalEntryStatus", ["DRAFT", "PO
 export const transactionDirectionEnum = pgEnum("TransactionDirection", ["DEBIT", "CREDIT"]);
 export const teamTypeEnum = pgEnum("TeamType", ["TEAM", "DEPARTMENT", "UNIT"]);
 
-export const employmentTypeEnum = pgEnum("EmploymentType", ["FULL_TIME", "CONTRACT", "INTERN"]);
+export const employmentTypeEnum = pgEnum("EmploymentType", ["FULL_TIME", "CONTRACT", "INTERN", "PART_TIME"]);
 export const leaveTypeEnum = pgEnum("LeaveType", ["ANNUAL", "SICK", "MATERNITY", "PATERNITY", "UNPAID", "CASUAL"]);
 export const leaveStatusEnum = pgEnum("LeaveStatus", ["DRAFT", "PENDING_CERTIFICATION", "PENDING_APPROVAL", "APPROVED", "REJECTED"]);
 export const appraisalStatusEnum = pgEnum("AppraisalStatus", ["DRAFT", "PENDING_CERTIFICATION", "PENDING_APPROVAL", "APPROVED", "REJECTED"]);

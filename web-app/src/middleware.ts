@@ -1,6 +1,7 @@
 import { withAuth } from "next-auth/middleware";
 
-export default withAuth({
+// Define auth middleware separately
+const authMiddleware = withAuth({
     callbacks: {
         authorized: ({ req, token }) => {
             // 1. Require Authentication
@@ -37,6 +38,31 @@ export default withAuth({
         },
     },
 });
+
+import { NextResponse } from "next/server";
+import type { NextRequest } from "next/server";
+import { rateLimit } from "@/lib/rate-limit";
+
+export default async function middleware(req: NextRequest) {
+    const ip = (req as any).ip || req.headers.get("x-forwarded-for") || "127.0.0.1";
+
+    // Rate Limiting Configuration
+    // Auth Routes: Strict (10 req/min)
+    // Other Routes: Loose (100 req/min)
+    const isAuth = req.nextUrl.pathname.startsWith("/api/auth");
+    const limitConfig = isAuth
+        ? { interval: 60 * 1000, limit: 10 }
+        : { interval: 60 * 1000, limit: 100 };
+
+    const { success } = rateLimit(ip, limitConfig);
+
+    if (!success) {
+        return new NextResponse("Too Many Requests", { status: 429 });
+    }
+
+    // @ts-ignore - Next-Auth types mismatch with NextMiddleware sometimes
+    return authMiddleware(req);
+}
 
 export const config = {
     matcher: [

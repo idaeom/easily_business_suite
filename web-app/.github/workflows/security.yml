@@ -1,0 +1,48 @@
+name: Security & Quality Check
+
+on:
+  push:
+    branches: [ "main", "master" ]
+  pull_request:
+    branches: [ "main", "master" ]
+
+jobs:
+  security-and-quality:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Use Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20.x'
+        cache: 'npm'
+        cache-dependency-path: './web-app/package-lock.json'
+
+    # Move to web-app directory for all subsequent steps
+    - name: Install Dependencies
+      working-directory: ./web-app
+      run: npm ci
+
+    - name: Secrets Scanning (TruffleHog)
+      uses: trufflesecurity/trufflehog@main
+      with:
+        path: ./
+        base: ${{ github.event.repository.default_branch }}
+        head: HEAD
+        extra_args: --debug --only-verified
+
+    - name: Security Audit
+      working-directory: ./web-app
+      # Fails if vulnerabilities are found with severity 'high' or 'critical'
+      # Using --audit-level=high to avoid failing on minor issues initially
+      run: npm audit --audit-level=high
+
+    - name: Linting
+      working-directory: ./web-app
+      run: npm run lint
+
+    - name: Type Checking (Build)
+      working-directory: ./web-app
+      run: npm run build

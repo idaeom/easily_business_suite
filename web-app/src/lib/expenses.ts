@@ -153,4 +153,58 @@ export class ExpenseService {
             return expense;
         });
     }
+
+    /**
+     * Pay Expense
+     * Records financial transaction and updates status.
+     */
+    static async payExpense(expenseId: string, sourceAccountId: string, paymentMethod: string, payerId: string) {
+        const db = await getDb();
+        return db.transaction(async (tx) => {
+            // 1. Get Expense
+            const expense = await tx.query.expenses.findFirst({
+                where: eq(expenses.id, expenseId)
+            });
+
+            if (!expense) throw new Error("Expense not found");
+            if (expense.status !== "APPROVED") throw new Error(`Expense must be APPROVED to pay (Current: ${expense.status})`);
+            if (!expense.expenseAccountId) throw new Error("Expense does not have a linked General Ledger Account");
+
+            // 2. Financial Transaction (Double Entry)
+            // Credit Source (Asset) - Negative
+            // Debit Expense (Expense) - Positive
+            const { FinanceService } = await import("@/lib/finance");
+
+            await FinanceService.createTransaction({
+                description: `Payment for Expense: ${expense.description}`,
+                date: new Date(),
+                reference: `EXP-${expenseId.substring(0, 8)}`,
+                entries: [
+                    {
+                        accountId: sourceAccountId,
+                        amount: -Number(expense.amount), // Credit Asset
+                        description: `Payout via ${paymentMethod}`
+                    },
+                    {
+                        accountId: expense.expenseAccountId,
+                        amount: Number(expense.amount), // Debit Expense
+                        description: `Expense Allocation`
+                    }
+                ]
+            }, tx);
+
+            // 3. Update Status
+            const [updatedExpense] = await tx.update(expenses)
+                .set({ status: "DISBURSED" }) // Using DISBURSED as per schema enum
+                .where(eq(expenses.id, expenseId))
+                .returning();
+
+            // 4. Log
+            await AuditService.log(payerId, "PAY_EXPENSE", "Expense", expenseId, {
+                description: `Paid expense via ${paymentMethod} from account ${sourceAccountId}`
+            }, tx);
+
+            return updatedExpense;
+        });
+    }
 }
