@@ -100,3 +100,50 @@ export async function getSales(page = 1, limit = 20) {
 }
 
 // ... Search helpers can remain or move to service.
+
+export async function createQuickCustomer(data: { name: string; phone: string }) {
+    const user = await getAuthenticatedUser();
+    if (!user) throw new Error("Unauthorized");
+
+    const { CrmService } = await import("@/services/crm-service");
+
+    const contact = await CrmService.createContact({
+        name: data.name,
+        phone: data.phone,
+        type: "CUSTOMER",
+        email: "",
+        address: ""
+    });
+
+    revalidatePath("/dashboard/business/sales");
+    return { success: true, contact };
+}
+
+export async function searchCustomers(query: string) {
+    const { CrmService } = await import("@/services/crm-service");
+    return CrmService.getContacts(query);
+}
+
+export async function searchItems(query: string) {
+    const { getDb } = await import("@/db");
+    const { items, inventory } = await import("@/db/schema");
+    const { ilike, or } = await import("drizzle-orm");
+    const db = await getDb();
+
+    const results = await db.query.items.findMany({
+        where: or(ilike(items.name, `%${query}%`), ilike(items.sku, `%${query}%`)),
+        limit: 20,
+        with: {
+            inventory: true
+        } // itemOutletPrices if needed? UI uses price directly from item table which is Global Price.
+    });
+
+    return results.map(item => {
+        const globalStock = item.inventory.reduce((sum, inv) => sum + Number(inv.quantity), 0);
+        return {
+            ...item,
+            price: Number(item.price),
+            quantity: globalStock
+        };
+    });
+}
